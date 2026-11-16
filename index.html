@@ -1,0 +1,2426 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Dividenden Radar">
+    <title>Dividenden-Radar | Trade Republic Depot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .pb-safe {
+            padding-bottom: calc(5.2rem + env(safe-area-inset-bottom));
+        }
+        .pt-safe {
+            padding-top: max(1rem, env(safe-area-inset-top));
+        }
+    </style>
+</head>
+<body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex justify-center selection:bg-emerald-500/30">
+
+    <!-- Hauptcontainer im iPhone-Format -->
+    <div class="w-full max-w-[430px] bg-zinc-50 dark:bg-zinc-950 min-h-screen flex flex-col relative shadow-2xl border-x border-zinc-200 dark:border-zinc-900">
+
+        <!-- Obere App-Leiste -->
+        <header class="sticky top-0 z-30 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 pt-safe pb-3">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                        <i data-lucide="radar" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-base font-bold tracking-tight text-zinc-900 dark:text-white leading-tight truncate">Dividenden-Radar</h1>
+                        <p class="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium truncate">Trade Republic · EUR</p>
+                    </div>
+                </div>
+
+                <!-- Rechte Aktionen: Brutto/Netto & Schnell-Hinzufügen -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="toggleTaxMode()" id="tax-toggle-btn" class="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1.5 rounded-full text-xs font-semibold transition active:scale-95 shadow-sm">
+                        <span id="tax-indicator" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span id="tax-label" class="text-zinc-800 dark:text-zinc-200">Brutto</span>
+                    </button>
+                    <button type="button" onclick="openAddModal('catalog')" aria-label="Wertpapier hinzufügen" class="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                        <i data-lucide="plus" class="w-5 h-5 stroke-[2.5]"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hauptbereich (wechselnde Ansichten) -->
+        <main class="flex-1 overflow-y-auto px-4 pt-4 pb-safe space-y-5">
+
+            <!-- TAB 1: START / ÜBERSICHT -->
+            <section id="view-overview" class="space-y-4">
+                
+                <!-- Depot-Wert & Dividenden Hauptkarte -->
+                <div class="bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 border border-zinc-200/90 dark:border-zinc-800/90 rounded-3xl p-5 shadow-sm relative overflow-hidden">
+                    <div class="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                    
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Depotwert (Trade Republic)</p>
+                            <h2 id="total-portfolio-value" class="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white mt-0.5">0,00 €</h2>
+                        </div>
+                        <span id="total-gain-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            +0,0 %
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
+                        <div>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Jahresdividende (<span class="tax-mode-text">Brutto</span>)</p>
+                            <p id="annual-dividend-total" class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">0,00 €</p>
+                            <p id="monthly-dividend-avg" class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">≈ 0,00 € / Monat</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Dividenden-Rendite</p>
+                            <p id="portfolio-yield" class="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">0,00 %</p>
+                            <p id="portfolio-yoc" class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">YoC: 0,00 %</p>
+                        </div>
+                    </div>
+
+                    <!-- Kompakte Status- & Umschalt-Zeile -->
+                    <div class="mt-3 pt-2.5 border-t border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between text-[11px]">
+                        <span id="overview-price-status" class="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Kurse: Bereit
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="togglePriceSourceMode()" id="btn-price-mode-toggle" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 transition">
+                                API-Kurse
+                            </button>
+                            <button type="button" onclick="refreshAllLivePrices(false)" class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 hover:underline">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                                Update
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 12-Monats Dividenden-Balkendiagramm -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-3xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Dividenden-Monate</h3>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Monat antippen für Details</p>
+                        </div>
+                        <span id="selected-month-badge" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                            Gesamtjahr
+                        </span>
+                    </div>
+
+                    <!-- Balken-Container -->
+                    <div id="monthly-chart" class="h-36 flex items-end justify-between gap-1.5 pt-4 px-1"></div>
+
+                    <!-- Detail-Box für ausgewählten Monat -->
+                    <div id="month-detail-box" class="mt-3 pt-3 border-t border-zinc-200/80 dark:border-zinc-800/80 hidden">
+                        <div class="flex justify-between items-center mb-2">
+                            <span id="month-detail-title" class="text-xs font-bold text-zinc-800 dark:text-zinc-200"></span>
+                            <span id="month-detail-sum" class="text-xs font-bold text-emerald-600 dark:text-emerald-400"></span>
+                        </div>
+                        <div id="month-detail-list" class="space-y-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Kompakter Schnellzugriff auf Depot-Analyse & Börsen-News -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="switchTab('analysis')" class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 text-left active:scale-95 transition shadow-sm">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="w-7 h-7 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                                <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                            </span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-400"></i>
+                        </div>
+                        <p class="text-xs font-bold text-zinc-900 dark:text-white">Depot-Analyse</p>
+                        <p id="overview-analysis-hint" class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">Gewichtung & Risiko</p>
+                    </button>
+
+                    <button type="button" onclick="switchTab('news')" class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 text-left active:scale-95 transition shadow-sm">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="w-7 h-7 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <i data-lucide="newspaper" class="w-4 h-4"></i>
+                            </span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-400"></i>
+                        </div>
+                        <p class="text-xs font-bold text-zinc-900 dark:text-white">Depot-News</p>
+                        <p id="overview-news-hint" class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">Meldungen zu deinen Werten</p>
+                    </button>
+                </div>
+
+                <!-- Nächste Zahlungen Vorschau -->
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Nächste Dividenden</h3>
+                        <button type="button" onclick="switchTab('calendar')" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">Alle ansehen</button>
+                    </div>
+                    <div id="upcoming-payments-preview" class="space-y-2"></div>
+                </div>
+            </section>
+
+            <!-- TAB 2: DIVVY-KALENDER -->
+            <section id="view-calendar" class="space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-900 dark:text-white">Dividenden-Kalender</h2>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Erwartete Ausschüttungen nach Monat</p>
+                    </div>
+                    <button type="button" onclick="exportAllEventsICS()" class="flex items-center gap-1.5 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold px-3 py-2 rounded-xl text-emerald-600 dark:text-emerald-400 active:scale-95 transition shadow-sm">
+                        <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                        <span>iOS Export</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <button type="button" onclick="filterCalendar('all')" data-cal-filter="all" class="cal-filter-btn bg-emerald-500 text-zinc-950 font-bold text-xs px-3.5 py-1.5 rounded-full shrink-0">Alle 12 Monate</button>
+                    <button type="button" onclick="filterCalendar('q1')" data-cal-filter="q1" class="cal-filter-btn bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0">Q1 (Jan-Mär)</button>
+                    <button type="button" onclick="filterCalendar('q2')" data-cal-filter="q2" class="cal-filter-btn bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0">Q2 (Apr-Jun)</button>
+                    <button type="button" onclick="filterCalendar('q3')" data-cal-filter="q3" class="cal-filter-btn bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0">Q3 (Jul-Sep)</button>
+                    <button type="button" onclick="filterCalendar('q4')" data-cal-filter="q4" class="cal-filter-btn bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0">Q4 (Okt-Dez)</button>
+                </div>
+
+                <div id="calendar-months-container" class="space-y-3"></div>
+            </section>
+
+            <!-- TAB 3: DEPOT-ANALYSE -->
+            <section id="view-analysis" class="space-y-4 hidden">
+                <div>
+                    <h2 class="text-lg font-bold text-zinc-900 dark:text-white">Depot-Analyse</h2>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Allokation, Einkommens-Fokus & Klumpenrisiken</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-sm">
+                        <p class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Ausschütter vs. Wachstum</p>
+                        <p id="analysis-dist-ratio" class="text-base font-extrabold text-zinc-900 dark:text-white mt-1">0 % / 0 %</p>
+                        <div class="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mt-2 flex">
+                            <div id="analysis-bar-dist" class="bg-emerald-500 h-full transition-all" style="width: 50%"></div>
+                            <div id="analysis-bar-growth" class="bg-indigo-500 h-full transition-all" style="width: 50%"></div>
+                        </div>
+                        <p id="analysis-dist-sub" class="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1.5">Rendite Ausschütter: 0,0 %</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-sm">
+                        <p class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">ETFs vs. Einzelaktien</p>
+                        <p id="analysis-etf-ratio" class="text-base font-extrabold text-zinc-900 dark:text-white mt-1">0 % / 0 %</p>
+                        <div class="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mt-2 flex">
+                            <div id="analysis-bar-etf" class="bg-sky-500 h-full transition-all" style="width: 50%"></div>
+                            <div id="analysis-bar-stock" class="bg-amber-500 h-full transition-all" style="width: 50%"></div>
+                        </div>
+                        <p id="analysis-top-payer" class="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1.5 truncate">Top-Zahler: –</p>
+                    </div>
+                </div>
+
+                <!-- Risiko- & Diversifikations-Check -->
+                <div id="analysis-risk-box" class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 space-y-2 shadow-sm"></div>
+
+                <!-- Positions-Gewichtung nach Depotanteil -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 space-y-3 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Positions-Gewichtung</h3>
+                        <span class="text-[11px] text-zinc-500 dark:text-zinc-400">Anteil am Depotwert</span>
+                    </div>
+                    <div id="analysis-weights-list" class="space-y-3"></div>
+                </div>
+            </section>
+
+            <!-- TAB 4: BÖRSEN-NEWS (NUR FÜR DEPOTWERTE) -->
+            <section id="view-news" class="space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-900 dark:text-white">Depot-News</h2>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Aktuelle Meldungen zu deinen Positionen</p>
+                    </div>
+                    <button type="button" onclick="loadDepotNews(true)" class="flex items-center gap-1.5 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold px-3 py-2 rounded-xl text-emerald-600 dark:text-emerald-400 active:scale-95 transition shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Aktualisieren</span>
+                    </button>
+                </div>
+
+                <!-- Filter-Chips nach Depot-Tickern -->
+                <div id="news-ticker-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+                <!-- News-Feed Liste -->
+                <div id="news-feed-container" class="space-y-2.5"></div>
+            </section>
+
+            <!-- TAB 5: DEPOT VERWALTEN -->
+            <section id="view-portfolio" class="space-y-4 hidden">
+                <div class="flex items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-900 dark:text-white">Mein TR-Depot</h2>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400"><span id="portfolio-count">0</span> Positionen in EUR</p>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="openAddModal('catalog')" class="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs px-3 py-2 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            <span>TR-Katalog</span>
+                        </button>
+                        <button type="button" onclick="openAddModal('manual')" class="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 font-semibold text-xs px-2.5 py-2 rounded-xl active:scale-95 transition">
+                            <i data-lucide="pen-line" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live-Kurse & Trade Republic Umschalter im Depot -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span id="portfolio-live-dot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span id="portfolio-last-updated" class="text-[11px] font-medium text-zinc-600 dark:text-zinc-300 truncate">Kurse werden geladen...</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="togglePriceSourceMode()" id="btn-portfolio-price-mode" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 transition text-zinc-800 dark:text-zinc-200 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                            Auf TR-Kurse
+                        </button>
+                        <button type="button" onclick="refreshAllLivePrices(false)" id="btn-portfolio-refresh" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 transition text-zinc-900 dark:text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-xl flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-3 h-3 text-emerald-500"></i>
+                            Update
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Liste der Aktien & ETFs im Depot -->
+                <div id="portfolio-stocks-list" class="space-y-3"></div>
+            </section>
+
+            <!-- TAB 6: EINSTELLUNGEN & APIS -->
+            <section id="view-settings" class="space-y-4 hidden">
+                <div>
+                    <h2 class="text-lg font-bold text-zinc-900 dark:text-white">Einstellungen & APIs</h2>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Trade Republic Kurse, Steuern & Dual-API</p>
+                </div>
+
+                <!-- Erscheinungsbild -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200">
+                            <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-zinc-900 dark:text-white">Erscheinungsbild</p>
+                            <p id="theme-label" class="text-xs text-zinc-500 dark:text-zinc-400">Dunkelmodus aktiv</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="toggleTheme()" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold px-3.5 py-2 rounded-xl transition">
+                        Wechseln
+                    </button>
+                </div>
+
+                <!-- Sparer-Pauschbetrag -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-zinc-900 dark:text-white">Sparer-Pauschbetrag (DE)</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Freibetrag für die Netto-Berechnung</p>
+                        </div>
+                        <span id="allowance-badge" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">1.000 €</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setTaxAllowance(0)" data-allowance="0" class="allowance-btn py-2 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-800">0 €</button>
+                        <button type="button" onclick="setTaxAllowance(1000)" data-allowance="1000" class="allowance-btn py-2 rounded-xl text-xs font-bold bg-emerald-500 text-zinc-950">1.000 € (Single)</button>
+                        <button type="button" onclick="setTaxAllowance(2000)" data-allowance="2000" class="allowance-btn py-2 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-800">2.000 € (Paar)</button>
+                    </div>
+                </div>
+
+                <!-- Dual-API Konfiguration für Trade Republic -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3 shadow-sm">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-bold text-zinc-900 dark:text-white">Dual-API (Twelve Data + Finnhub)</p>
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Optimiert für Trade Republic (Xetra EUR + US-Kurse & News).</p>
+                        </div>
+                        <span id="api-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">TR Auto-Feed</span>
+                    </div>
+
+                    <div class="space-y-2.5 pt-1">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Twelve Data API-Key (Primary Kurse)</label>
+                                <span id="td-key-status" class="text-[10px] font-bold"></span>
+                            </div>
+                            <input type="text" id="setting-twelvedata-key" placeholder="z. B. 8f4d2e1a9b..." class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Finnhub API-Key (Suche & Depot-News)</label>
+                                <span id="fh-key-status" class="text-[10px] font-bold"></span>
+                            </div>
+                            <input type="text" id="setting-finnhub-key" placeholder="z. B. c9abc123xyz..." class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" onclick="saveApiKeys()" id="save-keys-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs py-2.5 rounded-xl transition">
+                            Speichern & Prüfen
+                        </button>
+                        <button type="button" onclick="refreshAllLivePrices()" id="refresh-prices-btn" class="flex-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Kurse aktualisieren</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Termine & Backup -->
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-2.5 shadow-sm">
+                    <p class="text-sm font-bold text-zinc-900 dark:text-white">Kalender & Depot-Reset</p>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="exportAllEventsICS()" class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-xs font-semibold py-2.5 rounded-xl text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+                            <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i>
+                            <span>Dividenden-Termine (.ics)</span>
+                        </button>
+                        <button type="button" onclick="resetToDemoData()" class="px-3 bg-zinc-100 dark:bg-zinc-800 text-xs font-semibold py-2.5 rounded-xl text-zinc-500 hover:text-rose-500">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Untere Navigationsleiste (iOS Tab-Bar: 6 kompakte Tabs) -->
+        <nav class="fixed bottom-0 w-full max-w-[430px] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-200/90 dark:border-zinc-800/90 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30">
+            <div class="grid grid-cols-6 gap-0.5">
+                <button type="button" onclick="switchTab('overview')" data-tab="overview" class="nav-btn flex flex-col items-center justify-center py-1 text-emerald-600 dark:text-emerald-400">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-semibold mt-1">Start</span>
+                </button>
+                <button type="button" onclick="switchTab('calendar')" data-tab="calendar" class="nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400">
+                    <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium mt-1">Kalender</span>
+                </button>
+                <button type="button" onclick="switchTab('analysis')" data-tab="analysis" class="nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400">
+                    <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium mt-1">Analyse</span>
+                </button>
+                <button type="button" onclick="switchTab('news')" data-tab="news" class="nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400">
+                    <i data-lucide="newspaper" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium mt-1">News</span>
+                </button>
+                <button type="button" onclick="switchTab('portfolio')" data-tab="portfolio" class="nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400">
+                    <i data-lucide="briefcase" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium mt-1">Depot</span>
+                </button>
+                <button type="button" onclick="switchTab('settings')" data-tab="settings" class="nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium mt-1">Setup</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- MODAL: WERTPAPIER HINZUFÜGEN (TR-KATALOG / API-SUCHE / MANUELL) -->
+        <div id="stock-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-end sm:items-center justify-center">
+            <div class="w-full max-w-[430px] bg-white dark:bg-zinc-900 border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 max-h-[90vh] flex flex-col shadow-2xl">
+                
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+                    <h3 id="modal-title" class="text-base font-bold text-zinc-900 dark:text-white">Trade Republic Wertpapier</h3>
+                    <button type="button" onclick="closeModal()" class="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Modus-Umschalter im Modal -->
+                <div id="modal-mode-tabs" class="grid grid-cols-3 gap-1.5 bg-zinc-100 dark:bg-zinc-950 p-1 rounded-2xl my-3 shrink-0">
+                    <button type="button" onclick="switchModalMode('catalog')" data-modal-mode="catalog" class="modal-mode-btn py-2 rounded-xl text-xs font-bold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm">
+                        TR-Katalog
+                    </button>
+                    <button type="button" onclick="switchModalMode('search')" data-modal-mode="search" class="modal-mode-btn py-2 rounded-xl text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                        API-Suche
+                    </button>
+                    <button type="button" onclick="switchModalMode('manual')" data-modal-mode="manual" class="modal-mode-btn py-2 rounded-xl text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                        Manuell
+                    </button>
+                </div>
+
+                <!-- MODAL ANSICHT A: SCHNELL-KATALOG (NUR TRADE REPUBLIC WERTE) -->
+                <div id="modal-view-catalog" class="flex-1 overflow-y-auto space-y-3 pr-0.5">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-zinc-400 absolute left-3.5 top-3"></i>
+                        <input type="text" id="catalog-search-input" oninput="renderCatalog()" placeholder="Name, Ticker oder ISIN (z. B. MSCI World, Allianz)..." class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <!-- Kategorie-Filter -->
+                    <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                        <button type="button" onclick="setCatalogFilter('all')" data-cat="all" class="cat-btn bg-emerald-500 text-zinc-950 font-bold text-[11px] px-2.5 py-1 rounded-full shrink-0">Alle</button>
+                        <button type="button" onclick="setCatalogFilter('Welt ETF')" data-cat="Welt ETF" class="cat-btn bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-[11px] px-2.5 py-1 rounded-full shrink-0">Welt & Index ETFs</button>
+                        <button type="button" onclick="setCatalogFilter('Dividenden ETF')" data-cat="Dividenden ETF" class="cat-btn bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-[11px] px-2.5 py-1 rounded-full shrink-0">Dividenden-ETFs</button>
+                        <button type="button" onclick="setCatalogFilter('Wachstum')" data-cat="Wachstum" class="cat-btn bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-[11px] px-2.5 py-1 rounded-full shrink-0">Tech & Wachstum</button>
+                        <button type="button" onclick="setCatalogFilter('Dividende')" data-cat="Dividende" class="cat-btn bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-[11px] px-2.5 py-1 rounded-full shrink-0">Dividenden-Aktien</button>
+                    </div>
+
+                    <!-- Katalog-Ergebnisliste -->
+                    <div id="catalog-list" class="space-y-2 max-h-[46vh] overflow-y-auto"></div>
+
+                    <!-- 1-Klick Stückzahl-Bestätigung nach Auswahl -->
+                    <div id="catalog-quick-add" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span id="qa-badge" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-zinc-950">ETF</span>
+                                <h4 id="qa-name" class="text-sm font-bold text-zinc-900 dark:text-white mt-1">Name</h4>
+                                <p id="qa-meta" class="text-[11px] text-zinc-600 dark:text-zinc-300">Dividende & Monate</p>
+                            </div>
+                            <button type="button" onclick="cancelQuickAdd()" class="text-xs text-zinc-400 hover:text-zinc-200">Ändern</button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Deine Stückzahl *</label>
+                                <input type="number" step="any" id="qa-shares" oninput="updateQuickAddPreview()" placeholder="z. B. 15" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm font-bold text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">TR Kaufkurs (€)</label>
+                                <input type="number" step="0.01" id="qa-buyprice" oninput="updateQuickAddPreview()" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs pt-1">
+                            <span id="qa-preview-label" class="text-zinc-600 dark:text-zinc-400">Positionswert:</span>
+                            <span id="qa-annual-preview" class="font-bold text-emerald-600 dark:text-emerald-400">0,00 €</span>
+                        </div>
+
+                        <button type="button" onclick="confirmQuickAdd()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-sm py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition">
+                            Ins TR-Depot übernehmen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MODAL ANSICHT B: LIVE API-SUCHE -->
+                <div id="modal-view-search" class="hidden flex-1 overflow-y-auto space-y-3">
+                    <div class="bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 text-xs text-zinc-600 dark:text-zinc-400">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-zinc-900 dark:text-white">Dual-API Suche (Xetra / US)</span>
+                            <span id="modal-api-tag" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Aktiv</span>
+                        </div>
+                        <p class="text-[11px]">Suche nach US- oder Xetra-Tickern (z. B. <b>SAP.DE</b>, <b>ALV.DE</b>, <b>NVDA</b>). Kurse werden in EUR übernommen.</p>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="api-search-query" onkeydown="if(event.key==='Enter'){event.preventDefault();runApiSearch();}" placeholder="Ticker oder Firma (z. B. ALV.DE, Microsoft)..." class="flex-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        <button type="button" onclick="runApiSearch()" id="api-search-btn" class="bg-emerald-500 text-zinc-950 font-bold text-xs px-4 rounded-xl active:scale-95 transition">
+                            Suchen
+                        </button>
+                    </div>
+
+                    <div id="api-search-results" class="space-y-2 max-h-[45vh] overflow-y-auto">
+                        <p class="text-center text-xs text-zinc-500 py-8">Gib oben einen Suchbegriff ein und tippe auf „Suchen“.</p>
+                    </div>
+                </div>
+
+                <!-- MODAL ANSICHT C: MANUELLES FORMULAR -->
+                <form id="stock-form" onsubmit="saveStock(event)" class="hidden flex-1 overflow-y-auto space-y-3 pr-0.5">
+                    <input type="hidden" id="stock-id">
+                    <input type="hidden" id="stock-us-ticker">
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Typ</label>
+                            <select id="stock-type" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                                <option value="Aktie">Aktie</option>
+                                <option value="ETF">ETF</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Name *</label>
+                            <input type="text" id="stock-name" required placeholder="z. B. iShares MSCI World" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Xetra-Ticker *</label>
+                            <input type="text" id="stock-ticker" required placeholder="z. B. EUNL.DE" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs uppercase text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Stückzahl *</label>
+                            <input type="number" step="any" id="stock-shares" required placeholder="z. B. 10" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">TR Kaufkurs (€) *</label>
+                            <input type="number" step="0.01" id="stock-buy" required placeholder="95.00" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">API-Kurs (€) *</label>
+                            <input type="number" step="0.01" id="stock-current" required placeholder="104.50" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- Ausschüttungs-Art -->
+                    <div>
+                        <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Ertragsverwendung</label>
+                        <input type="hidden" id="stock-payout-mode" value="distributing">
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button type="button" onclick="setPayoutMode('distributing')" data-payout="distributing" class="payout-btn py-2 rounded-xl text-[11px] font-bold bg-emerald-500 text-zinc-950">Ausschüttend</button>
+                            <button type="button" onclick="setPayoutMode('accumulating')" data-payout="accumulating" class="payout-btn py-2 rounded-xl text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300">Thesaurierend</button>
+                            <button type="button" onclick="setPayoutMode('none')" data-payout="none" class="payout-btn py-2 rounded-xl text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300">Keine Dividende</button>
+                        </div>
+                    </div>
+
+                    <!-- Dividenden-Details -->
+                    <div id="dividend-fields-wrapper" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Jahresdividende je Stück (€ Brutto)</label>
+                            <input type="number" step="0.01" id="stock-dividend" placeholder="0.00" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Ausschüttungsmonate</label>
+                            <div id="month-checkboxes" class="grid grid-cols-6 gap-1.5"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Nächstes Event (opt.)</label>
+                            <input type="text" id="stock-event-title" placeholder="z. B. Ex-Dividende" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Event-Datum</label>
+                            <input type="date" id="stock-event-date" class="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-sm py-3 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition">
+                        Im TR-Depot speichern
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast Benachrichtigung -->
+        <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 z-50 whitespace-nowrap">
+            Gespeichert!
+        </div>
+    </div>
+
+    <script>
+        const MONTHS_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+        const MONTHS_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+        const STORAGE_KEY = 'dividenden_radar_tr_v1';
+        const SETTINGS_KEY = 'dividenden_radar_tr_settings_v1';
+
+        // Kuratierter Trade Republic Katalog (nur auf L&S / Xetra in EUR handelbare UCITS-ETFs & Aktien)
+        const POPULAR_CATALOG = [
+            // === WELT & INDEX ETFs (Trade Republic Standard) ===
+            { name: 'iShares Core MSCI World (Acc)', ticker: 'EUNL.DE', isin: 'IE00B4L5Y983', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 104.80, annualDividend: 0.00, months: [] },
+            { name: 'Vanguard FTSE All-World (Acc)', ticker: 'VWCE.DE', isin: 'IE00BK5BQT80', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 132.40, annualDividend: 0.00, months: [] },
+            { name: 'Vanguard FTSE All-World (Dist)', ticker: 'VGWL.DE', isin: 'IE00B3RBWM25', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'distributing', price: 129.60, annualDividend: 2.18, months: [3, 6, 9, 12] },
+            { name: 'SPDR MSCI ACWI IMI (Acc)', ticker: 'SPYI.DE', isin: 'IE00B3YLTY66', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 224.50, annualDividend: 0.00, months: [] },
+            { name: 'Invesco FTSE All-World (Acc)', ticker: 'FWIA.DE', isin: 'IE000716YHJ7', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 6.85, annualDividend: 0.00, months: [] },
+            { name: 'Amundi Prime Global (Acc)', ticker: 'PRAW.DE', isin: 'IE0009DRDY20', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 32.10, annualDividend: 0.00, months: [] },
+            { name: 'iShares Core S&P 500 (Acc)', ticker: 'SXR8.DE', isin: 'IE00B5BMR087', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 578.00, annualDividend: 0.00, months: [] },
+            { name: 'Vanguard S&P 500 (Dist)', ticker: 'VUSA.DE', isin: 'IE00B3XXRP09', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'distributing', price: 104.20, annualDividend: 1.18, months: [3, 6, 9, 12] },
+            { name: 'iShares Nasdaq-100 (Acc)', ticker: 'SXRV.DE', isin: 'IE00B53SZB19', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 1145.00, annualDividend: 0.00, months: [] },
+            { name: 'iShares Core MSCI EM IMI (Acc)', ticker: 'IS3N.DE', isin: 'IE00BKM4GZ66', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 34.40, annualDividend: 0.00, months: [] },
+            { name: 'Xtrackers MSCI World Momentum', ticker: 'XDEM.DE', isin: 'IE00BL25JP72', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 68.90, annualDividend: 0.00, months: [] },
+            { name: 'Xtrackers II EUR Overnight (DBX0AN)', ticker: 'XEON.DE', isin: 'LU0290358497', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 145.20, annualDividend: 0.00, months: [] },
+
+            // === DIVIDENDEN-ETFs (Trade Republic) ===
+            { name: 'Vanguard FTSE All-World High Div', ticker: 'VGWD.DE', isin: 'IE00B8GKDB10', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 66.40, annualDividend: 2.15, months: [3, 6, 9, 12] },
+            { name: 'iShares STOXX Global Select Div 100', ticker: 'ISPA.DE', isin: 'DE000A0F5UH1', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 29.80, annualDividend: 1.48, months: [1, 4, 7, 10] },
+            { name: 'SPDR S&P Global Dividend Aristocrats', ticker: 'ZPRG.DE', isin: 'IE00B9CQXS71', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 32.10, annualDividend: 1.24, months: [2, 5, 8, 11] },
+            { name: 'Fidelity Global Quality Income', ticker: 'FGEQ.DE', isin: 'IE00BYXVGZ48', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 9.75, annualDividend: 0.28, months: [2, 5, 8, 11] },
+            { name: 'VanEck Morningstar Dev. Markets Div', ticker: 'TDIV.DE', isin: 'NL0011683594', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 42.60, annualDividend: 1.78, months: [3, 6, 9, 12] },
+            { name: 'JPMorgan Global Equity Premium Inc', ticker: 'JEGP.DE', isin: 'IE0003UVYC20', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 25.40, annualDividend: 1.75, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+            { name: 'iShares Core DAX (Acc)', ticker: 'EXS1.DE', isin: 'DE0005933931', assetType: 'ETF', category: 'Welt ETF', payoutMode: 'accumulating', price: 168.50, annualDividend: 0.00, months: [] },
+            { name: 'iShares DivDAX (Dist)', ticker: 'EXSB.DE', isin: 'DE0002635273', assetType: 'ETF', category: 'Dividenden ETF', payoutMode: 'distributing', price: 22.90, annualDividend: 1.05, months: [3, 6, 9, 12] },
+
+            // === TECH & WACHSTUMSAKTIEN (mit US-Ticker für Dual-API) ===
+            { name: 'Amazon.com', ticker: 'AMZ.DE', usTicker: 'AMZN', isin: 'US0231351067', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 194.50, annualDividend: 0.00, months: [] },
+            { name: 'Alphabet (Class A)', ticker: 'ABEA.DE', usTicker: 'GOOGL', isin: 'US02079K3059', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'distributing', price: 168.20, annualDividend: 0.74, months: [3, 6, 9, 12] },
+            { name: 'Meta Platforms', ticker: 'FB2A.DE', usTicker: 'META', isin: 'US30303M1027', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'distributing', price: 542.00, annualDividend: 1.85, months: [3, 6, 9, 12] },
+            { name: 'NVIDIA', ticker: 'NVD.DE', usTicker: 'NVDA', isin: 'US67066G1040', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'distributing', price: 134.80, annualDividend: 0.04, months: [3, 6, 9, 12] },
+            { name: 'Tesla', ticker: 'TL0.DE', usTicker: 'TSLA', isin: 'US88160R1014', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 298.00, annualDividend: 0.00, months: [] },
+            { name: 'Berkshire Hathaway B', ticker: 'BRYN.DE', usTicker: 'BRK-B', isin: 'US0846707026', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 432.00, annualDividend: 0.00, months: [] },
+            { name: 'AMD', ticker: 'AMD.DE', usTicker: 'AMD', isin: 'US0079031078', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 136.40, annualDividend: 0.00, months: [] },
+            { name: 'Netflix', ticker: 'NFC.DE', usTicker: 'NFLX', isin: 'US64110L1061', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 765.00, annualDividend: 0.00, months: [] },
+            { name: 'Palantir Technologies', ticker: 'PTX.DE', usTicker: 'PLTR', isin: 'US69608A1088', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'none', price: 56.80, annualDividend: 0.00, months: [] },
+            { name: 'Rheinmetall', ticker: 'RHM.DE', isin: 'DE0007030009', assetType: 'Aktie', category: 'Wachstum', payoutMode: 'distributing', price: 548.00, annualDividend: 5.70, months: [5] },
+
+            // === DIVIDENDEN-AKTIEN (DAX & EUROPA) ===
+            { name: 'Allianz SE', ticker: 'ALV.DE', isin: 'DE0008404005', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 294.50, annualDividend: 13.80, months: [5] },
+            { name: 'Münchener Rück', ticker: 'MUV2.DE', isin: 'DE0008430026', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 488.00, annualDividend: 15.00, months: [5] },
+            { name: 'Deutsche Telekom', ticker: 'DTE.DE', isin: 'DE0005557508', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 28.40, annualDividend: 0.90, months: [4] },
+            { name: 'SAP SE', ticker: 'SAP.DE', usTicker: 'SAP', isin: 'DE0007164600', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 221.00, annualDividend: 2.20, months: [5] },
+            { name: 'Siemens AG', ticker: 'SIE.DE', isin: 'DE0007236101', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 184.50, annualDividend: 5.20, months: [2] },
+            { name: 'Mercedes-Benz Group', ticker: 'MBG.DE', isin: 'DE0007100000', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 56.20, annualDividend: 4.30, months: [5] },
+            { name: 'BASF SE', ticker: 'BAS.DE', isin: 'DE000BASF111', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 44.10, annualDividend: 2.25, months: [5] },
+            { name: 'DHL Group', ticker: 'DHL.DE', isin: 'DE0005552004', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 37.80, annualDividend: 1.85, months: [5] },
+            { name: 'E.ON SE', ticker: 'EOAN.DE', isin: 'DE000ENAG999', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 12.15, annualDividend: 0.55, months: [5] },
+            { name: 'Vonovia SE', ticker: 'VNA.DE', isin: 'DE000A1ML7J1', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 30.40, annualDividend: 1.22, months: [5] },
+            { name: 'ASML Holding', ticker: 'ASME.DE', usTicker: 'ASML', isin: 'NL0010273215', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 642.00, annualDividend: 6.40, months: [2, 5, 8, 11] },
+            { name: 'LVMH Moët Hennessy', ticker: 'MOH.DE', isin: 'FR0000121014', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 612.00, annualDividend: 13.00, months: [4, 12] },
+
+            // === US DIVIDENDEN-AKTIEN (auf Trade Republic in EUR) ===
+            { name: 'Apple Inc.', ticker: 'APC.DE', usTicker: 'AAPL', isin: 'US0378331005', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 212.50, annualDividend: 0.92, months: [2, 5, 8, 11] },
+            { name: 'Microsoft Corp.', ticker: 'MSF.DE', usTicker: 'MSFT', isin: 'US5949181045', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 396.00, annualDividend: 3.05, months: [3, 6, 9, 12] },
+            { name: 'Realty Income', ticker: 'RY6.DE', usTicker: 'O', isin: 'US7561091049', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 54.20, annualDividend: 2.94, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+            { name: 'Coca-Cola Co.', ticker: 'CCC3.DE', usTicker: 'KO', isin: 'US1912161007', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 60.50, annualDividend: 1.80, months: [4, 7, 10, 12] },
+            { name: 'Johnson & Johnson', ticker: 'JNJ.DE', usTicker: 'JNJ', isin: 'US4781601046', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 146.80, annualDividend: 4.58, months: [3, 6, 9, 12] },
+            { name: 'McDonald\'s Corp.', ticker: 'MDO.DE', usTicker: 'MCD', isin: 'US5801351017', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 276.00, annualDividend: 6.50, months: [3, 6, 9, 12] },
+            { name: 'Procter & Gamble', ticker: 'PRG.DE', usTicker: 'PG', isin: 'US7427181091', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 158.40, annualDividend: 3.72, months: [2, 5, 8, 11] },
+            { name: 'PepsiCo Inc.', ticker: 'PEP.DE', usTicker: 'PEP', isin: 'US7134481081', assetType: 'Aktie', category: 'Dividende', payoutMode: 'distributing', price: 154.20, annualDividend: 5.02, months: [1, 3, 6, 9] }
+        ];
+
+        // Start-Depot (realistische Trade Republic Mischung)
+        const DEFAULT_STOCKS = [
+            {
+                id: 'demo-1',
+                assetType: 'ETF',
+                payoutMode: 'accumulating',
+                name: 'iShares Core MSCI World (Acc)',
+                ticker: 'EUNL.DE',
+                shares: 45,
+                buyPrice: 92.50,
+                currentPrice: 104.80,
+                annualDividend: 0.00,
+                months: [],
+                nextEventTitle: 'ETF-Rebalancing',
+                nextEventDate: '2026-12-18'
+            },
+            {
+                id: 'demo-2',
+                assetType: 'ETF',
+                payoutMode: 'distributing',
+                name: 'Vanguard FTSE All-World High Div',
+                ticker: 'VGWD.DE',
+                shares: 65,
+                buyPrice: 58.20,
+                currentPrice: 66.40,
+                annualDividend: 2.15,
+                months: [3, 6, 9, 12],
+                nextEventTitle: 'Ex-Dividende Q4',
+                nextEventDate: '2026-12-17'
+            },
+            {
+                id: 'demo-3',
+                assetType: 'Aktie',
+                payoutMode: 'distributing',
+                name: 'Allianz SE',
+                ticker: 'ALV.DE',
+                shares: 12,
+                buyPrice: 245.00,
+                currentPrice: 294.50,
+                annualDividend: 13.80,
+                months: [5],
+                nextEventTitle: 'Geschäftszahlen Q4',
+                nextEventDate: '2027-02-26'
+            },
+            {
+                id: 'demo-4',
+                assetType: 'Aktie',
+                payoutMode: 'distributing',
+                name: 'Realty Income',
+                ticker: 'RY6.DE',
+                usTicker: 'O',
+                shares: 35,
+                buyPrice: 51.00,
+                currentPrice: 54.20,
+                annualDividend: 2.94,
+                months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                nextEventTitle: 'Ex-Dividende (Monatlich)',
+                nextEventDate: '2026-12-01'
+            },
+            {
+                id: 'demo-5',
+                assetType: 'Aktie',
+                payoutMode: 'none',
+                name: 'Amazon.com',
+                ticker: 'AMZ.DE',
+                usTicker: 'AMZN',
+                shares: 14,
+                buyPrice: 162.00,
+                currentPrice: 194.50,
+                annualDividend: 0.00,
+                months: [],
+                nextEventTitle: 'Quartalszahlen Q4',
+                nextEventDate: '2027-02-04'
+            }
+        ];
+
+        // App-Status
+        let state = {
+            stocks: [],
+            settings: {
+                theme: 'dark',
+                taxAllowance: 1000,
+                finnhubKey: '',
+                twelveDataKey: '',
+                priceSourceMode: 'api' // 'api' (Live-Börse) oder 'tr' (Trade Republic EUR-Kurse)
+            },
+            isNetMode: false,
+            activeTab: 'overview',
+            selectedChartMonth: null,
+            calendarFilter: 'all',
+            catalogFilter: 'all',
+            newsFilter: 'all',
+            newsItems: [],
+            selectedCatalogItem: null,
+            lastPriceUpdate: null,
+            priceSourceLabel: 'TR Auto-Feed',
+            editingTrPriceId: null
+        };
+
+        // Initialisierung beim Laden
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettingsFromStorage();
+            loadFromStorage();
+            renderMonthCheckboxes();
+            syncSettingsUI();
+            renderAll();
+            lucide.createIcons();
+
+            setTimeout(() => {
+                refreshAllLivePrices(true);
+            }, 350);
+        });
+
+        function loadSettingsFromStorage() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (raw) {
+                    state.settings = { ...state.settings, ...JSON.parse(raw) };
+                }
+            } catch (e) {
+                console.warn('Settings konnten nicht geladen werden', e);
+            }
+            applyTheme(state.settings.theme);
+        }
+
+        function saveSettingsToStorage() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+            } catch (e) {}
+        }
+
+        function loadFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        state.stocks = parsed;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Fehler beim Laden:', e);
+            }
+            state.stocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS));
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.stocks));
+            } catch (e) {}
+        }
+
+        function resetToDemoData() {
+            state.stocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS));
+            saveToStorage();
+            renderAll();
+            refreshAllLivePrices(true);
+            showToast('Trade Republic Beispiel-Depot wiederhergestellt');
+        }
+
+        // Theme & Settings
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'dark') {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
+        }
+
+        function toggleTheme() {
+            state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+            applyTheme(state.settings.theme);
+            saveSettingsToStorage();
+            syncSettingsUI();
+        }
+
+        function setTaxAllowance(amount) {
+            state.settings.taxAllowance = amount;
+            saveSettingsToStorage();
+            syncSettingsUI();
+            renderAll();
+            showToast(`Sparer-Pauschbetrag auf ${amount.toLocaleString('de-DE')} € gesetzt`);
+        }
+
+        function getEffectivePrice(stock) {
+            if (state.settings.priceSourceMode === 'tr' && typeof stock.trPrice === 'number' && stock.trPrice > 0) {
+                return stock.trPrice;
+            }
+            return stock.currentPrice || 0;
+        }
+
+        function togglePriceSourceMode() {
+            state.settings.priceSourceMode = state.settings.priceSourceMode === 'tr' ? 'api' : 'tr';
+            state.editingTrPriceId = null;
+            saveSettingsToStorage();
+            syncSettingsUI();
+            renderAll();
+            if (state.settings.priceSourceMode === 'tr') {
+                showToast('Lade deutsche L&S / Tradegate Abendkurse (TR)...');
+                refreshAllLivePrices(true);
+            } else {
+                showToast('Lade Heimatbörsen-Kurse (Xetra / US)...');
+                refreshAllLivePrices(true);
+            }
+        }
+
+        // ==========================================
+        // BASIS-HILFSFUNKTIONEN (STEUER, FORMAT, TABS)
+        // ==========================================
+        function formatEUR(value) {
+            const num = Number(value) || 0;
+            return num.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        }
+
+        function applyTax(grossAmount) {
+            if (!state.isNetMode || grossAmount <= 0) return grossAmount;
+            const totalGrossAnnual = state.stocks.reduce((sum, s) => sum + (s.shares * (s.annualDividend || 0)), 0);
+            if (totalGrossAnnual <= 0) return grossAmount;
+
+            const allowance = state.settings.taxAllowance || 0;
+            const taxableAnnual = Math.max(0, totalGrossAnnual - allowance);
+            const taxAnnual = taxableAnnual * 0.26375; // 25 % Abgeltungsteuer + 5,5 % Soli
+            const effectiveTaxRate = taxAnnual / totalGrossAnnual;
+            return grossAmount * (1 - effectiveTaxRate);
+        }
+
+        function toggleTaxMode() {
+            state.isNetMode = !state.isNetMode;
+            const label = document.getElementById('tax-label');
+            const indicator = document.getElementById('tax-indicator');
+            if (label) label.textContent = state.isNetMode ? 'Netto' : 'Brutto';
+            if (indicator) {
+                indicator.className = state.isNetMode ? 'w-2 h-2 rounded-full bg-sky-400' : 'w-2 h-2 rounded-full bg-emerald-500';
+            }
+            document.querySelectorAll('.tax-mode-text').forEach(el => {
+                el.textContent = state.isNetMode ? 'Netto' : 'Brutto';
+            });
+            renderAll();
+            if (!document.getElementById('catalog-quick-add').classList.contains('hidden')) {
+                updateQuickAddPreview();
+            }
+            showToast(state.isNetMode ? `Netto-Ansicht (inkl. ${state.settings.taxAllowance.toLocaleString('de-DE')} € Freibetrag)` : 'Brutto-Ansicht aktiv');
+        }
+
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            ['overview', 'calendar', 'analysis', 'news', 'portfolio', 'settings'].forEach(t => {
+                const viewEl = document.getElementById(`view-${t}`);
+                if (viewEl) viewEl.classList.toggle('hidden', t !== tabName);
+            });
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const isActive = btn.dataset.tab === tabName;
+                btn.className = isActive
+                    ? 'nav-btn flex flex-col items-center justify-center py-1 text-emerald-600 dark:text-emerald-400'
+                    : 'nav-btn flex flex-col items-center justify-center py-1 text-zinc-500 dark:text-zinc-400';
+            });
+
+            if (tabName === 'news' && state.newsItems.length === 0) {
+                loadDepotNews(false);
+            }
+            lucide.createIcons();
+        }
+
+        function renderAll() {
+            renderOverview();
+            renderCalendar();
+            renderAnalysis();
+            renderPortfolio();
+            updatePriceStatusBars();
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // DUAL-API & TRADE REPUBLIC EUR LIVE-KURSE
+        // ==========================================
+        let cachedFxRates = { USD: 0.92, CHF: 1.07, GBP: 1.19, JPY: 0.0061 };
+
+        async function updateFxRatesToEUR() {
+            try {
+                const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,CHF,GBP,JPY');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.rates) {
+                        if (data.rates.USD) cachedFxRates.USD = 1 / data.rates.USD;
+                        if (data.rates.CHF) cachedFxRates.CHF = 1 / data.rates.CHF;
+                        if (data.rates.GBP) cachedFxRates.GBP = 1 / data.rates.GBP;
+                        if (data.rates.JPY) cachedFxRates.JPY = 1 / data.rates.JPY;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function convertToEUR(price, currency) {
+            if (!price || isNaN(price)) return null;
+            const cur = (currency || 'EUR').toUpperCase();
+            if (cur === 'EUR') return price;
+            if (cur === 'GBX' || cur === 'GBP') return (cur === 'GBX' ? price / 100 : price) * cachedFxRates.GBP;
+            if (cur === 'USD') return price * cachedFxRates.USD;
+            if (cur === 'CHF') return price * cachedFxRates.CHF;
+            if (cur === 'JPY') return price * cachedFxRates.JPY;
+            return price;
+        }
+
+        function mapToTwelveDataSymbol(ticker) {
+            const clean = ticker.toUpperCase().trim();
+            if (clean.endsWith('.DE')) return clean.replace('.DE', ':XETR');
+            if (clean.endsWith('.AS')) return clean.replace('.AS', ':XAMS');
+            if (clean.endsWith('.PA')) return clean.replace('.PA', ':XPAR');
+            return clean;
+        }
+
+        function resolveUsReferenceTicker(ticker, usTicker) {
+            if (usTicker) return usTicker.toUpperCase().trim();
+            const found = POPULAR_CATALOG.find(item => item.ticker.toUpperCase() === ticker.toUpperCase());
+            if (found && found.usTicker) return found.usTicker;
+
+            // Bekannte deutsche TR-Ticker auf US-Heimatbörse mappen
+            const extraMap = {
+                'RY6.DE': 'O',
+                'AMZ.DE': 'AMZN',
+                'APC.DE': 'AAPL',
+                'MSF.DE': 'MSFT',
+                'NVD.DE': 'NVDA',
+                'ABEA.DE': 'GOOGL',
+                'FB2A.DE': 'META',
+                'TL0.DE': 'TSLA',
+                'CCC3.DE': 'KO',
+                'MDO.DE': 'MCD',
+                'PRG.DE': 'PG'
+            };
+            return extraMap[ticker.toUpperCase()] || null;
+        }
+
+        async function fetchYahooChartEUR(symbol) {
+            try {
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+                const res = await fetch(proxyUrl);
+                if (res.ok) {
+                    const wrapped = await res.json();
+                    const parsed = JSON.parse(wrapped.contents);
+                    const meta = parsed?.chart?.result?.[0]?.meta;
+                    if (meta && meta.regularMarketPrice) {
+                        return convertToEUR(meta.regularMarketPrice, meta.currency);
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        async function fetchSinglePriceInEUR(ticker, usTicker = null) {
+            const cleanTicker = (ticker || '').toUpperCase().trim();
+            const tdKey = state.settings.twelveDataKey;
+            const fhKey = state.settings.finnhubKey;
+            const resolvedUs = resolveUsReferenceTicker(cleanTicker, usTicker);
+            const isTrMode = state.settings.priceSourceMode === 'tr';
+
+            // SPEZIAL-MODUS: TRADE REPUBLIC (Deutscher Abendhandel / L&S / Stuttgart / Frankfurt in EUR bis 22/23 Uhr)
+            if (isTrMode && cleanTicker.endsWith('.DE')) {
+                const baseSym = cleanTicker.replace('.DE', '');
+                const germanExtendedVenues = [`${baseSym}.SG`, `${baseSym}.F`, cleanTicker];
+                for (const venueSym of germanExtendedVenues) {
+                    const eurPrice = await fetchYahooChartEUR(venueSym);
+                    if (eurPrice && eurPrice > 0) {
+                        return { price: eurPrice, source: 'TR / DE-Handel' };
+                    }
+                }
+            }
+
+            // 1. Twelve Data (Primary für Trade Republic Xetra + US)
+            if (tdKey) {
+                try {
+                    const tdSymbol = mapToTwelveDataSymbol(cleanTicker);
+                    const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(tdSymbol)}&apikey=${encodeURIComponent(tdKey)}`);
+                    const data = await res.json();
+                    if (data && data.price) {
+                        const rawVal = parseFloat(data.price);
+                        const isEurListing = cleanTicker.endsWith('.DE') || cleanTicker.endsWith('.AS') || cleanTicker.endsWith('.PA');
+                        return { price: isEurListing ? rawVal : convertToEUR(rawVal, 'USD'), source: 'Twelve Data' };
+                    }
+                } catch (e) {}
+
+                if (resolvedUs && resolvedUs !== cleanTicker) {
+                    try {
+                        const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(resolvedUs)}&apikey=${encodeURIComponent(tdKey)}`);
+                        const data = await res.json();
+                        if (data && data.price) {
+                            return { price: convertToEUR(parseFloat(data.price), 'USD'), source: 'Twelve Data (US→EUR)' };
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            // 2. Finnhub (US-Referenz-Ticker -> EUR Umrechnung)
+            if (fhKey) {
+                const fhSymbol = resolvedUs || (!cleanTicker.includes('.') ? cleanTicker : null);
+                if (fhSymbol) {
+                    try {
+                        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(fhSymbol)}&token=${encodeURIComponent(fhKey)}`);
+                        const data = await res.json();
+                        if (data && data.c && data.c > 0) {
+                            return { price: convertToEUR(data.c, 'USD'), source: 'Finnhub (US→EUR)' };
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            // 3. Fallback: Xetra / Yahoo EUR Feed
+            const fallbackEur = await fetchYahooChartEUR(cleanTicker);
+            if (fallbackEur && fallbackEur > 0) {
+                return {
+                    price: fallbackEur,
+                    source: cleanTicker.endsWith('.DE') ? 'Xetra EUR' : 'Börsen-Feed'
+                };
+            }
+
+            return null;
+        }
+
+        function updatePriceStatusBars(isLoading = false) {
+            const ovStatus = document.getElementById('overview-price-status');
+            const pfStatus = document.getElementById('portfolio-last-updated');
+            const pfDot = document.getElementById('portfolio-live-dot');
+            const isTrMode = state.settings.priceSourceMode === 'tr';
+
+            if (isLoading) {
+                if (ovStatus) ovStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Kurse werden aktualisiert...`;
+                if (pfStatus) pfStatus.textContent = 'Aktualisiere Kurse...';
+                if (pfDot) pfDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0';
+                return;
+            }
+
+            const timeText = state.lastPriceUpdate ? `${state.lastPriceUpdate} Uhr` : 'Referenzkurse';
+            const modeTag = isTrMode ? 'TR-Kurse aktiv' : state.priceSourceLabel;
+            if (ovStatus) {
+                ovStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${isTrMode ? 'bg-sky-400' : 'bg-emerald-500'}"></span> ${modeTag} · ${timeText}`;
+            }
+            if (pfStatus) {
+                pfStatus.textContent = isTrMode
+                    ? 'TR-Modus: Kurs antippen zum Anpassen'
+                    : (state.lastPriceUpdate ? `Stand: ${timeText} (${state.priceSourceLabel})` : 'Noch nicht aktualisiert');
+            }
+            if (pfDot) {
+                pfDot.className = `w-2 h-2 rounded-full ${isTrMode ? 'bg-sky-400' : 'bg-emerald-500'} shrink-0`;
+            }
+        }
+
+        async function refreshAllLivePrices(silent = false) {
+            const btn = document.getElementById('refresh-prices-btn');
+            if (btn) btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Lädt...</span>`;
+            updatePriceStatusBars(true);
+            lucide.createIcons();
+
+            await updateFxRatesToEUR();
+            let updatedCount = 0;
+            let usedSource = 'TR Auto-Feed';
+            const nowStr = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            const isTrMode = state.settings.priceSourceMode === 'tr';
+
+            for (let stock of state.stocks) {
+                const result = await fetchSinglePriceInEUR(stock.ticker, stock.usTicker);
+                if (result && result.price > 0) {
+                    const rounded = Number(result.price.toFixed(2));
+                    if (isTrMode) {
+                        stock.trPrice = rounded;
+                        stock.trUpdatedAt = `${nowStr} Uhr`;
+                    } else {
+                        stock.currentPrice = rounded;
+                        stock.isLivePrice = true;
+                        stock.priceUpdatedAt = `${nowStr} Uhr`;
+                    }
+                    usedSource = result.source;
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0) {
+                state.lastPriceUpdate = nowStr;
+                state.priceSourceLabel = usedSource;
+                saveToStorage();
+            }
+
+            if (btn) btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i><span>Kurse aktualisieren</span>`;
+            renderAll();
+
+            if (!silent) {
+                showToast(updatedCount > 0 ? `${updatedCount} Kurse in EUR aktualisiert` : 'Kurse aktuell (API-Limit oder Börse geschlossen)');
+            }
+        }
+
+        // ==========================================
+        // TAB 1: START / ÜBERSICHT RENDERN
+        // ==========================================
+        function renderOverview() {
+            let totalValue = 0;
+            let totalInvested = 0;
+            let totalAnnualDivGross = 0;
+
+            state.stocks.forEach(s => {
+                totalValue += s.shares * getEffectivePrice(s);
+                totalInvested += s.shares * s.buyPrice;
+                totalAnnualDivGross += s.shares * s.annualDividend;
+            });
+
+            const totalAnnualDiv = applyTax(totalAnnualDivGross);
+            const monthlyAvg = totalAnnualDiv / 12;
+            const gain = totalValue - totalInvested;
+            const gainPct = totalInvested > 0 ? (gain / totalInvested) * 100 : 0;
+            const currentYield = totalValue > 0 ? (totalAnnualDiv / totalValue) * 100 : 0;
+            const yoc = totalInvested > 0 ? (totalAnnualDiv / totalInvested) * 100 : 0;
+
+            document.getElementById('total-portfolio-value').textContent = formatEUR(totalValue);
+            document.getElementById('annual-dividend-total').textContent = formatEUR(totalAnnualDiv);
+            document.getElementById('monthly-dividend-avg').textContent = `≈ ${formatEUR(monthlyAvg)} / Monat`;
+            document.getElementById('portfolio-yield').textContent = `${currentYield.toFixed(2).replace('.', ',')} %`;
+            document.getElementById('portfolio-yoc').textContent = `YoC: ${yoc.toFixed(2).replace('.', ',')} %`;
+
+            const gainBadge = document.getElementById('total-gain-badge');
+            const isPositive = gain >= 0;
+            gainBadge.textContent = `${isPositive ? '+' : ''}${gainPct.toFixed(1).replace('.', ',')} %`;
+            gainBadge.className = `text-xs font-bold px-2.5 py-1 rounded-full ${isPositive ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-500'}`;
+
+            const hintEl = document.getElementById('overview-analysis-hint');
+            if (hintEl) hintEl.textContent = `${state.stocks.length} Positionen im Depot`;
+
+            renderMonthlyChart();
+            renderUpcomingPreview();
+        }
+
+        function getMonthlyBreakdown() {
+            const months = Array.from({ length: 12 }, (_, idx) => ({
+                monthIndex: idx + 1,
+                name: MONTHS_SHORT[idx],
+                fullName: MONTHS_FULL[idx],
+                total: 0,
+                items: []
+            }));
+
+            state.stocks.forEach(s => {
+                if (!s.months || s.months.length === 0 || s.annualDividend <= 0) return;
+                const perPaymentGross = (s.shares * s.annualDividend) / s.months.length;
+                const perPayment = applyTax(perPaymentGross);
+
+                s.months.forEach(m => {
+                    if (m >= 1 && m <= 12) {
+                        months[m - 1].total += perPayment;
+                        months[m - 1].items.push({
+                            name: s.name,
+                            ticker: s.ticker,
+                            amount: perPayment
+                        });
+                    }
+                });
+            });
+
+            return months;
+        }
+
+        function renderMonthlyChart() {
+            const container = document.getElementById('monthly-chart');
+            const data = getMonthlyBreakdown();
+            const maxVal = Math.max(...data.map(d => d.total), 1);
+
+            container.innerHTML = data.map(d => {
+                const heightPct = Math.max((d.total / maxVal) * 100, d.total > 0 ? 12 : 4);
+                const isSelected = state.selectedChartMonth === d.monthIndex;
+                const barColor = isSelected 
+                    ? 'bg-emerald-500 shadow-md shadow-emerald-500/30' 
+                    : (d.total > 0 ? 'bg-emerald-500/45 hover:bg-emerald-500/75' : 'bg-zinc-200 dark:bg-zinc-800');
+
+                return `
+                    <button type="button" onclick="selectChartMonth(${d.monthIndex})" class="flex-1 flex flex-col items-center h-full justify-end group focus:outline-none">
+                        <div class="w-full rounded-t-lg transition-all duration-300 ${barColor}" style="height: ${heightPct}%"></div>
+                        <span class="text-[10px] mt-1.5 font-semibold ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}">${d.name}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const detailBox = document.getElementById('month-detail-box');
+            const badge = document.getElementById('selected-month-badge');
+
+            if (state.selectedChartMonth) {
+                const selected = data[state.selectedChartMonth - 1];
+                badge.textContent = selected.fullName;
+                detailBox.classList.remove('hidden');
+                document.getElementById('month-detail-title').textContent = `Ausschüttungen im ${selected.fullName}`;
+                document.getElementById('month-detail-sum').textContent = formatEUR(selected.total);
+                
+                const listEl = document.getElementById('month-detail-list');
+                if (selected.items.length === 0) {
+                    listEl.innerHTML = `<p class="text-xs text-zinc-500">Keine Ausschüttungen in diesem Monat.</p>`;
+                } else {
+                    listEl.innerHTML = selected.items.map(item => `
+                        <div class="flex justify-between items-center text-xs bg-zinc-50 dark:bg-zinc-950/80 px-3 py-2 rounded-xl border border-zinc-200/70 dark:border-zinc-800/70">
+                            <span class="font-medium text-zinc-800 dark:text-zinc-200">${item.name} <span class="text-zinc-400">(${item.ticker})</span></span>
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400">${formatEUR(item.amount)}</span>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                badge.textContent = 'Gesamtjahr';
+                detailBox.classList.add('hidden');
+            }
+        }
+
+        function selectChartMonth(monthIdx) {
+            state.selectedChartMonth = state.selectedChartMonth === monthIdx ? null : monthIdx;
+            renderMonthlyChart();
+        }
+
+        function renderUpcomingPreview() {
+            const container = document.getElementById('upcoming-payments-preview');
+            const currentMonth = new Date().getMonth() + 1;
+            const breakdown = getMonthlyBreakdown();
+            
+            const nextMonths = [];
+            for (let i = 0; i < 3; i++) {
+                const idx = (currentMonth - 1 + i) % 12;
+                if (breakdown[idx].items.length > 0) {
+                    nextMonths.push(breakdown[idx]);
+                }
+            }
+
+            if (nextMonths.length === 0) {
+                container.innerHTML = `<div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-xs text-zinc-500 text-center">Keine anstehenden Ausschüttungen in den nächsten 3 Monaten.</div>`;
+                return;
+            }
+
+            container.innerHTML = nextMonths.slice(0, 2).map(m => `
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center">
+                            ${m.name}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-zinc-900 dark:text-white">${m.fullName}</p>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">${m.items.length} ${m.items.length === 1 ? 'Zahlung' : 'Zahlungen'} (${m.items.map(i => i.ticker).join(', ')})</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">${formatEUR(m.total)}</span>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================
+        // TAB 2: KALENDER RENDERN
+        // ==========================================
+        function filterCalendar(filter) {
+            state.calendarFilter = filter;
+            document.querySelectorAll('.cal-filter-btn').forEach(btn => {
+                const active = btn.dataset.calFilter === filter;
+                btn.className = active 
+                    ? 'cal-filter-btn bg-emerald-500 text-zinc-950 font-bold text-xs px-3.5 py-1.5 rounded-full shrink-0'
+                    : 'cal-filter-btn bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs px-3.5 py-1.5 rounded-full shrink-0';
+            });
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const container = document.getElementById('calendar-months-container');
+            let data = getMonthlyBreakdown();
+
+            if (state.calendarFilter === 'q1') data = data.slice(0, 3);
+            if (state.calendarFilter === 'q2') data = data.slice(3, 6);
+            if (state.calendarFilter === 'q3') data = data.slice(6, 9);
+            if (state.calendarFilter === 'q4') data = data.slice(9, 12);
+
+            container.innerHTML = data.map(m => `
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <span class="text-sm font-bold text-zinc-900 dark:text-white">${m.fullName}</span>
+                        <span class="text-sm font-bold ${m.total > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}">${formatEUR(m.total)}</span>
+                    </div>
+                    ${m.items.length === 0 
+                        ? `<p class="text-xs text-zinc-400 italic">Keine Ausschüttung geplant</p>`
+                        : `<div class="space-y-2 pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
+                            ${m.items.map(i => `
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-700 dark:text-zinc-300">${i.ticker}</span>
+                                        <span class="text-zinc-700 dark:text-zinc-300">${i.name}</span>
+                                    </div>
+                                    <span class="font-semibold text-zinc-900 dark:text-white">${formatEUR(i.amount)}</span>
+                                </div>
+                            `).join('')}
+                        </div>`
+                    }
+                </div>
+            `).join('');
+        }
+
+        // ==========================================
+        // TAB 3: DEPOT-ANALYSE RENDERN
+        // ==========================================
+        function renderAnalysis() {
+            const distEl = document.getElementById('analysis-dist-ratio');
+            const etfEl = document.getElementById('analysis-etf-ratio');
+            const riskBox = document.getElementById('analysis-risk-box');
+            const weightsList = document.getElementById('analysis-weights-list');
+            if (!distEl || !riskBox || !weightsList) return;
+
+            let totalValue = 0;
+            let distValue = 0;
+            let growthValue = 0;
+            let etfValue = 0;
+            let stockValue = 0;
+            let totalDistDiv = 0;
+
+            const enriched = state.stocks.map(s => {
+                const val = s.shares * getEffectivePrice(s);
+                const inv = s.shares * s.buyPrice;
+                const div = applyTax(s.shares * s.annualDividend);
+                totalValue += val;
+
+                const isDist = getPayoutMode(s) === 'distributing' && s.annualDividend > 0;
+                if (isDist) {
+                    distValue += val;
+                    totalDistDiv += div;
+                } else {
+                    growthValue += val;
+                }
+
+                if (s.assetType === 'ETF') etfValue += val;
+                else stockValue += val;
+
+                return { ...s, val, inv, div, isDist };
+            });
+
+            const distPct = totalValue > 0 ? Math.round((distValue / totalValue) * 100) : 0;
+            const growthPct = totalValue > 0 ? 100 - distPct : 0;
+            const etfPct = totalValue > 0 ? Math.round((etfValue / totalValue) * 100) : 0;
+            const stockPct = totalValue > 0 ? 100 - etfPct : 0;
+            const distYield = distValue > 0 ? (totalDistDiv / distValue) * 100 : 0;
+
+            distEl.textContent = `${distPct} % / ${growthPct} %`;
+            document.getElementById('analysis-bar-dist').style.width = `${distPct}%`;
+            document.getElementById('analysis-bar-growth').style.width = `${growthPct}%`;
+            document.getElementById('analysis-dist-sub').textContent = `Rendite Ausschütter: ${distYield.toFixed(2).replace('.', ',')} %`;
+
+            etfEl.textContent = `${etfPct} % / ${stockPct} %`;
+            document.getElementById('analysis-bar-etf').style.width = `${etfPct}%`;
+            document.getElementById('analysis-bar-stock').style.width = `${stockPct}%`;
+
+            const topPayer = [...enriched].filter(e => e.div > 0).sort((a, b) => b.div - a.div)[0];
+            document.getElementById('analysis-top-payer').textContent = topPayer
+                ? `Top-Zahler: ${topPayer.ticker} (${formatEUR(topPayer.div)})`
+                : 'Top-Zahler: Noch keine Ausschütter';
+
+            // Risiko- & Klumpen-Check
+            const singleStockAlerts = enriched.filter(e => e.assetType !== 'ETF' && totalValue > 0 && (e.val / totalValue) > 0.25);
+            const totalAnnualDiv = enriched.reduce((sum, e) => sum + e.div, 0);
+            const divConcentrationAlert = topPayer && totalAnnualDiv > 0 && (topPayer.div / totalAnnualDiv) > 0.45;
+
+            let riskHtml = `
+                <div class="flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Depot-Gesundheitscheck</h3>
+                </div>
+            `;
+
+            if (singleStockAlerts.length > 0) {
+                singleStockAlerts.forEach(alertItem => {
+                    const pct = ((alertItem.val / totalValue) * 100).toFixed(1).replace('.', ',');
+                    riskHtml += `
+                        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                            <span><b>Klumpenrisiko:</b> Einzelaktie <b>${alertItem.name}</b> macht ${pct} % deines Depots aus (Empfehlung: max. 20–25 % pro Einzelwert).</span>
+                        </div>
+                    `;
+                });
+            } else if (divConcentrationAlert) {
+                const divShare = ((topPayer.div / totalAnnualDiv) * 100).toFixed(0);
+                riskHtml += `
+                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                        <span><b>Einkommens-Konzentration:</b> ${divShare} % deiner Dividenden stammen allein von <b>${topPayer.name}</b>.</span>
+                    </div>
+                `;
+            } else {
+                riskHtml += `
+                    <p class="text-xs text-zinc-600 dark:text-zinc-400">
+                        Keine kritischen Einzelaktien-Klumpen erkannt. Deine Streuung über ETFs (${etfPct} %) und Einzelwerte (${stockPct} %) ist ausgewogen.
+                    </p>
+                `;
+            }
+            riskBox.innerHTML = riskHtml;
+
+            // Positions-Gewichtung sortiert nach Wert
+            const sorted = [...enriched].sort((a, b) => b.val - a.val);
+            if (sorted.length === 0) {
+                weightsList.innerHTML = `<p class="text-xs text-zinc-500">Noch keine Positionen im Depot.</p>`;
+                return;
+            }
+
+            weightsList.innerHTML = sorted.map(item => {
+                const weight = totalValue > 0 ? (item.val / totalValue) * 100 : 0;
+                const barColor = item.assetType === 'ETF' ? 'bg-sky-500' : (item.isDist ? 'bg-emerald-500' : 'bg-indigo-500');
+                return `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="font-bold text-zinc-900 dark:text-white truncate">${item.name}</span>
+                                <span class="text-[10px] text-zinc-400 shrink-0">${item.ticker}</span>
+                            </div>
+                            <div class="text-right shrink-0 ml-2">
+                                <span class="font-bold text-zinc-900 dark:text-white">${weight.toFixed(1).replace('.', ',')} %</span>
+                                <span class="text-[11px] text-zinc-500 ml-1">(${formatEUR(item.val)})</span>
+                            </div>
+                        </div>
+                        <div class="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div class="${barColor} h-full rounded-full" style="width: ${Math.max(weight, 2)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // TAB 4: BÖRSEN-NEWS (NUR FÜR DEPOTWERTE)
+        // ==========================================
+        function setNewsFilter(ticker) {
+            state.newsFilter = ticker;
+            renderNewsSection();
+        }
+
+        async function loadDepotNews(forceToast = false) {
+            const container = document.getElementById('news-feed-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-center space-y-2">
+                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-emerald-500 mx-auto"></i>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Suche aktuelle Börsen-News für dein Depot...</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+
+            const collected = [];
+            const fhKey = state.settings.finnhubKey;
+            const today = new Date();
+            const past = new Date();
+            past.setDate(today.getDate() - 14);
+            const toStr = today.toISOString().split('T')[0];
+            const fromStr = past.toISOString().split('T')[0];
+
+            // 1. Finnhub Company News für Depotwerte mit US-Symbol
+            if (fhKey) {
+                for (const stock of state.stocks) {
+                    const fhSymbol = resolveUsReferenceTicker(stock.ticker, stock.usTicker) || (!stock.ticker.includes('.') ? stock.ticker : null);
+                    if (!fhSymbol) continue;
+                    try {
+                        const res = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(fhSymbol)}&from=${fromStr}&to=${toStr}&token=${encodeURIComponent(fhKey)}`);
+                        if (res.ok) {
+                            const articles = await res.json();
+                            if (Array.isArray(articles)) {
+                                articles.slice(0, 3).forEach(art => {
+                                    if (art.headline && art.url) {
+                                        collected.push({
+                                            ticker: stock.ticker,
+                                            stockName: stock.name,
+                                            title: art.headline,
+                                            source: art.source || 'Finnhub',
+                                            date: art.datetime ? new Date(art.datetime * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : 'Aktuell',
+                                            timestamp: art.datetime || 0,
+                                            url: art.url
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            // 2. Deutsche Google News RSS für alle Depotwerte
+            const targetStocks = state.stocks.slice(0, 6);
+            for (const stock of targetStocks) {
+                if (collected.filter(c => c.ticker === stock.ticker).length >= 2) continue;
+                try {
+                    const cleanName = stock.name.replace(/\(Acc\)|\(Dist\)|SE|AG|Inc\.|Corp\./gi, '').trim();
+                    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanName + ' Aktie OR ETF')}&hl=de&gl=DE&ceid=DE:de`;
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`;
+                    const res = await fetch(proxyUrl);
+                    if (res.ok) {
+                        const wrapped = await res.json();
+                        const xml = new DOMParser().parseFromString(wrapped.contents, 'text/xml');
+                        const items = Array.from(xml.querySelectorAll('item')).slice(0, 2);
+                        items.forEach(item => {
+                            const title = item.querySelector('title')?.textContent || '';
+                            const link = item.querySelector('link')?.textContent || '';
+                            const pubDate = item.querySelector('pubDate')?.textContent || '';
+                            const source = item.querySelector('source')?.textContent || 'Börsen-News';
+                            const parsedTime = pubDate ? Date.parse(pubDate) / 1000 : 0;
+                            if (title && link) {
+                                collected.push({
+                                    ticker: stock.ticker,
+                                    stockName: stock.name,
+                                    title: title.replace(/\s-\s[^-]+$/, ''),
+                                    source,
+                                    date: parsedTime ? new Date(parsedTime * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : 'Aktuell',
+                                    timestamp: parsedTime || Math.floor(Date.now() / 1000),
+                                    url: link
+                                });
+                            }
+                        });
+                    }
+                } catch (e) {}
+            }
+
+            // Fallback-News, falls Offline oder Proxy kurz blockiert
+            if (collected.length === 0 && state.stocks.length > 0) {
+                state.stocks.forEach((s, idx) => {
+                    collected.push({
+                        ticker: s.ticker,
+                        stockName: s.name,
+                        title: `${s.name}: Aktuelle Marktübersicht, Kennzahlen & Ausschüttungstermine`,
+                        source: 'Finanz-Übersicht',
+                        date: 'Heute',
+                        timestamp: Math.floor(Date.now() / 1000) - idx * 3600,
+                        url: `https://www.google.com/search?q=${encodeURIComponent(s.name + ' ' + s.ticker + ' Aktie News')}&tbm=nws`
+                    });
+                });
+            }
+
+            collected.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            state.newsItems = collected;
+            renderNewsSection();
+
+            if (forceToast) {
+                showToast(`${collected.length} Meldungen zu deinen Depotwerten geladen`);
+            }
+        }
+
+        function renderNewsSection() {
+            const filterContainer = document.getElementById('news-ticker-filters');
+            const feedContainer = document.getElementById('news-feed-container');
+            if (!filterContainer || !feedContainer) return;
+
+            const tickers = ['all', ...new Set(state.stocks.map(s => s.ticker))];
+            filterContainer.innerHTML = tickers.map(t => {
+                const active = state.newsFilter === t;
+                const label = t === 'all' ? 'Alle Depotwerte' : t;
+                return `
+                    <button type="button" onclick="setNewsFilter('${t}')" class="${active ? 'bg-emerald-500 text-zinc-950 font-bold' : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold'} text-xs px-3 py-1.5 rounded-full shrink-0 transition">
+                        ${label}
+                    </button>
+                `;
+            }).join('');
+
+            const filtered = state.newsFilter === 'all'
+                ? state.newsItems
+                : state.newsItems.filter(n => n.ticker === state.newsFilter);
+
+            const hintEl = document.getElementById('overview-news-hint');
+            if (hintEl && state.newsItems.length > 0) {
+                hintEl.textContent = `${state.newsItems.length} aktuelle Artikel`;
+            }
+
+            if (filtered.length === 0) {
+                feedContainer.innerHTML = `
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-center text-xs text-zinc-500">
+                        Keine aktuellen Nachrichten für diesen Filter gefunden.
+                    </div>
+                `;
+                return;
+            }
+
+            feedContainer.innerHTML = filtered.map(item => `
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="block bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 hover:border-emerald-500/50 rounded-2xl p-4 space-y-2 shadow-sm transition active:scale-[0.99]">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                            ${item.ticker} · ${item.stockName}
+                        </span>
+                        <span class="text-[11px] text-zinc-400 shrink-0">${item.date}</span>
+                    </div>
+                    <h3 class="text-xs font-bold text-zinc-900 dark:text-white leading-snug">
+                        ${item.title}
+                    </h3>
+                    <div class="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 pt-0.5">
+                        <span>Quelle: ${item.source}</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            Lesen <i data-lucide="external-link" class="w-3 h-3"></i>
+                        </span>
+                    </div>
+                </a>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // TAB 5: DEPOT RENDERN
+        // ==========================================
+        function getPayoutMode(s) {
+            if (s.payoutMode) return s.payoutMode;
+            return s.annualDividend > 0 ? 'distributing' : 'none';
+        }
+
+        function renderPortfolio() {
+            const container = document.getElementById('portfolio-stocks-list');
+            document.getElementById('portfolio-count').textContent = state.stocks.length;
+
+            if (state.stocks.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-xs text-zinc-500">Dein Depot ist leer. Nutze oben den TR-Katalog!</div>`;
+                return;
+            }
+
+            const isTrMode = state.settings.priceSourceMode === 'tr';
+            const totalPortfolioValue = state.stocks.reduce((sum, item) => sum + (item.shares * getEffectivePrice(item)), 0);
+
+            container.innerHTML = state.stocks.map(s => {
+                const activePrice = getEffectivePrice(s);
+                const hasCustomTr = typeof s.trPrice === 'number' && s.trPrice > 0;
+                const posValue = s.shares * activePrice;
+                const posInvested = s.shares * s.buyPrice;
+                const gain = posValue - posInvested;
+                const gainPct = posInvested > 0 ? (gain / posInvested) * 100 : 0;
+                const weightPct = totalPortfolioValue > 0 ? (posValue / totalPortfolioValue) * 100 : 0;
+                const annualDiv = applyTax(s.shares * s.annualDividend);
+                const yoc = posInvested > 0 ? (annualDiv / posInvested) * 100 : 0;
+                const isEtf = s.assetType === 'ETF';
+                const mode = getPayoutMode(s);
+                const isNonDist = mode === 'accumulating' || mode === 'none' || s.annualDividend <= 0;
+                const isEditingTr = state.editingTrPriceId === s.id;
+
+                const modeBadge = mode === 'accumulating'
+                    ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">Thesaurierend (Acc)</span>`
+                    : mode === 'none' || s.annualDividend <= 0
+                        ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-600 dark:text-violet-400">Wachstum · 0 € Div.</span>`
+                        : '';
+
+                return `
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 space-y-3 shadow-sm">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${isEtf ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'}">${s.assetType || 'Aktie'}</span>
+                                    ${modeBadge}
+                                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white truncate">${s.name}</h3>
+                                </div>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                    <span class="font-semibold text-zinc-700 dark:text-zinc-300">${s.ticker}</span> • ${s.shares} Stk. • Kauf: ${formatEUR(s.buyPrice)}
+                                </p>
+                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <button type="button" onclick="openInlineTrPriceEdit('${s.id}')" title="Trade Republic Kurs eingeben" class="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-emerald-500/15 px-2 py-0.5 rounded-md transition">
+                                        <span class="w-1.5 h-1.5 rounded-full ${isTrMode && hasCustomTr ? 'bg-sky-400' : s.isLivePrice ? 'bg-emerald-500' : 'bg-amber-400'}"></span>
+                                        ${isTrMode && hasCustomTr ? 'TR-Kurs' : 'Aktuell'}: ${formatEUR(activePrice)}
+                                        <i data-lucide="edit-3" class="w-2.5 h-2.5 text-zinc-400 ml-0.5"></i>
+                                    </button>
+                                    ${isTrMode && hasCustomTr ? `<span class="text-[10px] text-zinc-400">API: ${formatEUR(s.currentPrice)}</span>` : s.priceUpdatedAt ? `<span class="text-[10px] text-zinc-400">${s.priceUpdatedAt}</span>` : ''}
+                                </div>
+                                ${isEditingTr ? `
+                                    <div class="mt-2 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-950 p-1.5 rounded-xl border border-emerald-500/40">
+                                        <input type="number" step="0.01" id="tr-inline-input-${s.id}" value="${activePrice.toFixed(2)}" onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineTrPrice('${s.id}');}" placeholder="TR-Kurs (€)" class="w-24 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none">
+                                        <button type="button" onclick="saveInlineTrPrice('${s.id}')" class="bg-emerald-500 text-zinc-950 font-bold text-[11px] px-2.5 py-1 rounded-lg">TR übernehmen</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-sm font-bold text-zinc-900 dark:text-white">${formatEUR(posValue)}</p>
+                                <p class="text-[11px] font-semibold ${gain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}">
+                                    ${gain >= 0 ? '+' : ''}${gainPct.toFixed(1).replace('.', ',')} %
+                                </p>
+                                <p class="text-[10px] text-zinc-400 mt-0.5">Anteil: ${weightPct.toFixed(1).replace('.', ',')} %</p>
+                            </div>
+                        </div>
+
+                        <div class="grid ${isNonDist ? 'grid-cols-2' : 'grid-cols-3'} gap-2 pt-2.5 border-t border-zinc-200/80 dark:border-zinc-800/80 text-xs">
+                            ${isNonDist ? `
+                                <div>
+                                    <span class="text-[10px] text-zinc-500 block">Kursgewinn/-verlust</span>
+                                    <span class="font-bold ${gain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}">${gain >= 0 ? '+' : ''}${formatEUR(gain)}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-zinc-500 block">Ertragsart</span>
+                                    <span class="font-semibold text-zinc-700 dark:text-zinc-300">${mode === 'accumulating' ? 'Wiederanlage' : 'Kursfokus'}</span>
+                                </div>
+                            ` : `
+                                <div>
+                                    <span class="text-[10px] text-zinc-500 block">Dividende / Jahr</span>
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">${formatEUR(annualDiv)}</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-zinc-500 block">Pers. Rendite</span>
+                                    <span class="font-semibold text-zinc-800 dark:text-zinc-200">${yoc.toFixed(2).replace('.', ',')} %</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-zinc-500 block">Turnus</span>
+                                    <span class="font-semibold text-zinc-800 dark:text-zinc-200">${s.months.length}x / Jahr</span>
+                                </div>
+                            `}
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-1">
+                            <button type="button" onclick="editStock('${s.id}')" class="text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i data-lucide="pencil" class="w-3 h-3"></i> Bearbeiten
+                            </button>
+                            <button type="button" onclick="deleteStock('${s.id}')" class="text-xs font-semibold text-rose-500 bg-rose-500/10 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i> Löschen
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // iOS KALENDER EXPORT (.ICS)
+        // ==========================================
+        function exportAllEventsICS() {
+            const eventStocks = state.stocks.filter(s => s.nextEventDate && s.nextEventTitle);
+            if (eventStocks.length === 0) {
+                showToast('Keine Termine zum Exportieren vorhanden');
+                return;
+            }
+            const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//DividendenRadar//iOS//DE'];
+            eventStocks.forEach(s => {
+                const cleanDate = s.nextEventDate.replace(/-/g, '');
+                lines.push(
+                    'BEGIN:VEVENT',
+                    `UID:divradar-${s.id}-${cleanDate}@app`,
+                    `DTSTAMP:${cleanDate}T080000Z`,
+                    `DTSTART;VALUE=DATE:${cleanDate}`,
+                    `SUMMARY:${s.ticker}: ${s.nextEventTitle}`,
+                    `DESCRIPTION:Trade Republic Depot - ${s.name} (${s.shares} Stk.)`,
+                    'BEGIN:VALARM',
+                    'TRIGGER:-P1D',
+                    'ACTION:DISPLAY',
+                    `DESCRIPTION:Morgen: ${s.name} - ${s.nextEventTitle}`,
+                    'END:VALARM',
+                    'END:VEVENT'
+                );
+            });
+            lines.push('END:VCALENDAR');
+            downloadICSFile(lines.join('\r\n'), 'Dividenden_Termine.ics');
+        }
+
+        function downloadICSFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Kalender-Datei (.ics) erstellt');
+        }
+
+        // ==========================================
+        // MODAL: SCHNELL-KATALOG & API-SUCHE
+        // ==========================================
+        function openAddModal(mode = 'catalog') {
+            document.getElementById('stock-form').reset();
+            document.getElementById('stock-id').value = '';
+            document.getElementById('stock-us-ticker').value = '';
+            setPayoutMode('distributing');
+            document.getElementById('modal-title').textContent = 'Trade Republic Wertpapier';
+            document.getElementById('modal-mode-tabs').classList.remove('hidden');
+            cancelQuickAdd();
+
+            document.querySelectorAll('.month-cb').forEach(cb => cb.checked = false);
+            switchModalMode(mode);
+
+            const modal = document.getElementById('stock-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function switchModalMode(mode) {
+            document.querySelectorAll('.modal-mode-btn').forEach(btn => {
+                const isTarget = btn.dataset.modalMode === mode;
+                btn.className = isTarget
+                    ? 'modal-mode-btn py-2 rounded-xl text-xs font-bold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                    : 'modal-mode-btn py-2 rounded-xl text-xs font-semibold text-zinc-500 dark:text-zinc-400';
+            });
+
+            document.getElementById('modal-view-catalog').classList.toggle('hidden', mode !== 'catalog');
+            document.getElementById('modal-view-search').classList.toggle('hidden', mode !== 'search');
+            document.getElementById('stock-form').classList.toggle('hidden', mode !== 'manual');
+
+            if (mode === 'catalog') renderCatalog();
+        }
+
+        function setCatalogFilter(cat) {
+            state.catalogFilter = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                const active = btn.dataset.cat === cat;
+                btn.className = active
+                    ? 'cat-btn bg-emerald-500 text-zinc-950 font-bold text-[11px] px-2.5 py-1 rounded-full shrink-0'
+                    : 'cat-btn bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-[11px] px-2.5 py-1 rounded-full shrink-0';
+            });
+            renderCatalog();
+        }
+
+        function renderCatalog() {
+            const listEl = document.getElementById('catalog-list');
+            const query = (document.getElementById('catalog-search-input').value || '').toLowerCase().trim();
+
+            const filtered = POPULAR_CATALOG.filter(item => {
+                const matchCat = state.catalogFilter === 'all' || item.category === state.catalogFilter;
+                const matchQuery = !query || 
+                    item.name.toLowerCase().includes(query) || 
+                    item.ticker.toLowerCase().includes(query) || 
+                    (item.isin && item.isin.toLowerCase().includes(query));
+                return matchCat && matchQuery;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<p class="text-center text-xs text-zinc-500 py-6">Kein Treffer im TR-Katalog. Nutze oben „API-Suche“ oder „Manuell“.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map((item, idx) => {
+                const isAcc = item.payoutMode === 'accumulating';
+                const isNone = item.payoutMode === 'none' || item.annualDividend <= 0;
+                const yieldPct = item.price > 0 ? (item.annualDividend / item.price) * 100 : 0;
+                const payoutLabel = isAcc
+                    ? `<span class="text-indigo-500 dark:text-indigo-400 font-semibold">Thesaurierend (Acc)</span>`
+                    : isNone
+                        ? `<span class="text-violet-500 dark:text-violet-400 font-semibold">Wachstum · 0 € Div.</span>`
+                        : `<span class="text-emerald-600 dark:text-emerald-400 font-bold">~${yieldPct.toFixed(1).replace('.', ',')} % Div.</span>`;
+
+                return `
+                    <button type="button" onclick="selectCatalogItem(${idx})" class="w-full text-left bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3 flex items-center justify-between gap-2 transition">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${item.assetType === 'ETF' ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'}">${item.assetType}</span>
+                                <span class="text-xs font-bold text-zinc-900 dark:text-white truncate">${item.name}</span>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                ${item.ticker} ${item.isin ? `• ${item.isin}` : ''} • ${payoutLabel}
+                            </p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="block text-xs font-bold text-zinc-900 dark:text-white">${formatEUR(item.price)}</span>
+                            <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Auswählen →</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            window._currentFilteredCatalog = filtered;
+        }
+
+        async function selectCatalogItem(filteredIndex) {
+            const item = window._currentFilteredCatalog[filteredIndex];
+            if (!item) return;
+
+            state.selectedCatalogItem = item;
+            document.getElementById('catalog-list').classList.add('hidden');
+            const qaBox = document.getElementById('catalog-quick-add');
+            qaBox.classList.remove('hidden');
+
+            const isAcc = item.payoutMode === 'accumulating';
+            const isNone = item.payoutMode === 'none' || item.annualDividend <= 0;
+
+            document.getElementById('qa-badge').textContent = `${item.assetType} · ${item.ticker}`;
+            document.getElementById('qa-name').textContent = item.name;
+            document.getElementById('qa-meta').textContent = isAcc
+                ? `Thesaurierend · Kurs wird geladen...`
+                : isNone
+                    ? `Wachstumsaktie (keine Dividende) · Kurs wird geladen...`
+                    : `${formatEUR(item.annualDividend)} Dividende/Jahr • ${item.months.length}x Ausschüttung`;
+            document.getElementById('qa-buyprice').value = item.price.toFixed(2);
+            document.getElementById('qa-shares').value = '';
+            document.getElementById('qa-shares').focus();
+            updateQuickAddPreview();
+
+            const liveResult = await fetchSinglePriceInEUR(item.ticker, item.usTicker);
+            if (liveResult && liveResult.price > 0 && state.selectedCatalogItem === item) {
+                item.price = Number(liveResult.price.toFixed(2));
+                document.getElementById('qa-buyprice').value = item.price.toFixed(2);
+                document.getElementById('qa-meta').textContent = isAcc
+                    ? `Thesaurierend · Aktueller Kurs: ${formatEUR(item.price)}`
+                    : isNone
+                        ? `Wachstumsaktie · Aktueller Kurs: ${formatEUR(item.price)}`
+                        : `${formatEUR(item.annualDividend)} Div./Jahr • Kurs: ${formatEUR(item.price)}`;
+                updateQuickAddPreview();
+            }
+        }
+
+        function cancelQuickAdd() {
+            state.selectedCatalogItem = null;
+            document.getElementById('catalog-quick-add').classList.add('hidden');
+            document.getElementById('catalog-list').classList.remove('hidden');
+        }
+
+        function updateQuickAddPreview() {
+            if (!state.selectedCatalogItem) return;
+            const shares = parseFloat(document.getElementById('qa-shares').value) || 0;
+            const buyPrice = parseFloat(document.getElementById('qa-buyprice').value) || state.selectedCatalogItem.price || 0;
+            const isNonDist = state.selectedCatalogItem.payoutMode === 'accumulating' || state.selectedCatalogItem.payoutMode === 'none' || state.selectedCatalogItem.annualDividend <= 0;
+
+            const labelEl = document.getElementById('qa-preview-label');
+            const valEl = document.getElementById('qa-annual-preview');
+
+            if (isNonDist) {
+                if (labelEl) labelEl.textContent = 'Positionswert:';
+                valEl.textContent = formatEUR(shares * buyPrice);
+            } else {
+                if (labelEl) labelEl.textContent = 'Erwartete Jahresdividende:';
+                const annual = applyTax(shares * state.selectedCatalogItem.annualDividend);
+                valEl.textContent = `${formatEUR(annual)} (${state.isNetMode ? 'Netto' : 'Brutto'})`;
+            }
+        }
+
+        function confirmQuickAdd() {
+            const item = state.selectedCatalogItem;
+            if (!item) return;
+
+            const shares = parseFloat(document.getElementById('qa-shares').value);
+            const buyPrice = parseFloat(document.getElementById('qa-buyprice').value) || item.price;
+
+            if (!shares || shares <= 0) {
+                showToast('Bitte gib deine Stückzahl ein');
+                document.getElementById('qa-shares').focus();
+                return;
+            }
+
+            const newEntry = {
+                id: 'tr-' + Date.now(),
+                assetType: item.assetType,
+                payoutMode: item.payoutMode || (item.annualDividend > 0 ? 'distributing' : 'none'),
+                name: item.name,
+                ticker: item.ticker,
+                usTicker: item.usTicker || null,
+                shares: shares,
+                buyPrice: buyPrice,
+                currentPrice: item.price,
+                annualDividend: item.annualDividend,
+                months: [...item.months],
+                nextEventTitle: item.annualDividend > 0 ? 'Nächste Ausschüttung' : 'Quartalsbericht',
+                nextEventDate: ''
+            };
+
+            state.stocks.push(newEntry);
+            saveToStorage();
+            closeModal();
+            renderAll();
+            showToast(`${item.name} zum TR-Depot hinzugefügt`);
+        }
+
+        // Live API-Suche (Finnhub + Twelve Data)
+        async function runApiSearch() {
+            const query = (document.getElementById('api-search-query').value || '').trim();
+            const resultsEl = document.getElementById('api-search-results');
+            if (!query) return;
+
+            resultsEl.innerHTML = `<div class="text-center py-8 text-xs text-zinc-500 flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Suche läuft...</div>`;
+            lucide.createIcons();
+
+            const fhKey = state.settings.finnhubKey;
+            const tdKey = state.settings.twelveDataKey;
+            let matches = [];
+
+            if (fhKey) {
+                try {
+                    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${encodeURIComponent(fhKey)}`);
+                    const data = await res.json();
+                    if (data && Array.isArray(data.result)) {
+                        matches = data.result.slice(0, 10).map(r => ({
+                            symbol: r.symbol,
+                            name: r.description,
+                            type: r.type === 'ETP' ? 'ETF' : 'Aktie'
+                        }));
+                    }
+                } catch (e) {}
+            } else if (tdKey) {
+                try {
+                    const res = await fetch(`https://api.twelvedata.com/symbol_search?symbol=${encodeURIComponent(query)}&apikey=${encodeURIComponent(tdKey)}`);
+                    const data = await res.json();
+                    if (data && Array.isArray(data.data)) {
+                        matches = data.data.slice(0, 10).map(r => ({
+                            symbol: r.exchange === 'XETR' ? `${r.symbol}.DE` : r.symbol,
+                            name: `${r.instrument_name} (${r.exchange})`,
+                            type: r.instrument_type === 'ETF' ? 'ETF' : 'Aktie'
+                        }));
+                    }
+                } catch (e) {}
+            } else {
+                const qLow = query.toLowerCase();
+                matches = POPULAR_CATALOG.filter(i => i.name.toLowerCase().includes(qLow) || i.ticker.toLowerCase().includes(qLow)).map(i => ({
+                    symbol: i.ticker,
+                    name: i.name,
+                    type: i.assetType
+                }));
+            }
+
+            if (matches.length === 0) {
+                resultsEl.innerHTML = `<p class="text-center text-xs text-zinc-500 py-8">Keine Treffer gefunden. Du kannst das Wertpapier über den Tab „Manuell“ anlegen.</p>`;
+                return;
+            }
+
+            resultsEl.innerHTML = matches.map((m, idx) => `
+                <button type="button" onclick="selectApiSearchResult(${idx})" class="w-full text-left bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3 flex items-center justify-between gap-2 transition">
+                    <div class="min-w-0">
+                        <span class="text-xs font-bold text-zinc-900 dark:text-white block truncate">${m.name}</span>
+                        <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">${m.symbol} • ${m.type}</span>
+                    </div>
+                    <span class="text-xs font-bold text-zinc-500 shrink-0">Übernehmen →</span>
+                </button>
+            `).join('');
+
+            window._apiSearchMatches = matches;
+        }
+
+        async function selectApiSearchResult(idx) {
+            const match = window._apiSearchMatches[idx];
+            if (!match) return;
+
+            switchModalMode('manual');
+            document.getElementById('stock-name').value = match.name;
+            document.getElementById('stock-ticker').value = match.symbol;
+            document.getElementById('stock-type').value = match.type;
+
+            showToast(`Lade Kurs für ${match.symbol} in EUR...`);
+            const liveResult = await fetchSinglePriceInEUR(match.symbol);
+            if (liveResult && liveResult.price > 0) {
+                document.getElementById('stock-current').value = liveResult.price.toFixed(2);
+                document.getElementById('stock-buy').value = liveResult.price.toFixed(2);
+                showToast(`Kurs: ${formatEUR(liveResult.price)} (${liveResult.source})`);
+            }
+        }
+
+        // ==========================================
+        // MANUELLES FORMULAR & BEARBEITEN
+        // ==========================================
+        function setPayoutMode(mode) {
+            document.getElementById('stock-payout-mode').value = mode;
+            document.querySelectorAll('.payout-btn').forEach(btn => {
+                const active = btn.dataset.payout === mode;
+                btn.className = active
+                    ? 'payout-btn py-2 rounded-xl text-[11px] font-bold bg-emerald-500 text-zinc-950'
+                    : 'payout-btn py-2 rounded-xl text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300';
+            });
+
+            const divWrapper = document.getElementById('dividend-fields-wrapper');
+            if (divWrapper) {
+                divWrapper.classList.toggle('hidden', mode !== 'distributing');
+            }
+        }
+
+        function renderMonthCheckboxes() {
+            const container = document.getElementById('month-checkboxes');
+            container.innerHTML = MONTHS_SHORT.map((m, idx) => `
+                <label class="cursor-pointer">
+                    <input type="checkbox" value="${idx + 1}" class="month-cb peer sr-only">
+                    <div class="text-center py-2 rounded-xl text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-500 peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 transition">
+                        ${m}
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('stock-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function editStock(id) {
+            const stock = state.stocks.find(s => s.id === id);
+            if (!stock) return;
+
+            document.getElementById('modal-title').textContent = 'Position bearbeiten';
+            document.getElementById('modal-mode-tabs').classList.add('hidden');
+            switchModalMode('manual');
+
+            document.getElementById('stock-id').value = stock.id;
+            document.getElementById('stock-us-ticker').value = stock.usTicker || '';
+            document.getElementById('stock-type').value = stock.assetType || 'Aktie';
+            document.getElementById('stock-name').value = stock.name;
+            document.getElementById('stock-ticker').value = stock.ticker;
+            document.getElementById('stock-shares').value = stock.shares;
+            document.getElementById('stock-buy').value = stock.buyPrice;
+            document.getElementById('stock-current').value = stock.currentPrice;
+            document.getElementById('stock-dividend').value = stock.annualDividend;
+            document.getElementById('stock-event-title').value = stock.nextEventTitle || '';
+            document.getElementById('stock-event-date').value = stock.nextEventDate || '';
+
+            setPayoutMode(getPayoutMode(stock));
+
+            document.querySelectorAll('.month-cb').forEach(cb => {
+                cb.checked = stock.months.includes(parseInt(cb.value, 10));
+            });
+
+            const modal = document.getElementById('stock-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function saveStock(e) {
+            e.preventDefault();
+            const id = document.getElementById('stock-id').value;
+            const payoutMode = document.getElementById('stock-payout-mode').value || 'distributing';
+            const selectedMonths = payoutMode === 'distributing'
+                ? Array.from(document.querySelectorAll('.month-cb:checked')).map(cb => parseInt(cb.value, 10))
+                : [];
+            const rawDividend = payoutMode === 'distributing'
+                ? (parseFloat(document.getElementById('stock-dividend').value) || 0)
+                : 0;
+
+            const existing = id ? state.stocks.find(s => s.id === id) : null;
+
+            const stockData = {
+                id: id || 'stock-' + Date.now(),
+                assetType: document.getElementById('stock-type').value,
+                payoutMode: payoutMode,
+                name: document.getElementById('stock-name').value.trim(),
+                ticker: document.getElementById('stock-ticker').value.trim().toUpperCase(),
+                usTicker: document.getElementById('stock-us-ticker').value.trim().toUpperCase() || null,
+                shares: parseFloat(document.getElementById('stock-shares').value),
+                buyPrice: parseFloat(document.getElementById('stock-buy').value),
+                currentPrice: parseFloat(document.getElementById('stock-current').value),
+                trPrice: existing ? existing.trPrice : undefined,
+                annualDividend: rawDividend,
+                months: selectedMonths,
+                nextEventTitle: document.getElementById('stock-event-title').value.trim(),
+                nextEventDate: document.getElementById('stock-event-date').value
+            };
+
+            if (id) {
+                const idx = state.stocks.findIndex(s => s.id === id);
+                if (idx !== -1) state.stocks[idx] = stockData;
+                showToast('Position aktualisiert');
+            } else {
+                state.stocks.push(stockData);
+                showToast('Position hinzugefügt');
+            }
+
+            saveToStorage();
+            closeModal();
+            renderAll();
+        }
+
+        function deleteStock(id) {
+            state.stocks = state.stocks.filter(s => s.id !== id);
+            saveToStorage();
+            renderAll();
+            showToast('Position entfernt');
+        }
+
+        function openInlineTrPriceEdit(id) {
+            state.editingTrPriceId = state.editingTrPriceId === id ? null : id;
+            renderPortfolio();
+            lucide.createIcons();
+            if (state.editingTrPriceId) {
+                setTimeout(() => {
+                    const input = document.getElementById(`tr-inline-input-${id}`);
+                    if (input) {
+                        input.focus();
+                        input.select();
+                    }
+                }, 40);
+            }
+        }
+
+        function saveInlineTrPrice(id) {
+            const input = document.getElementById(`tr-inline-input-${id}`);
+            if (!input) return;
+            const val = parseFloat(String(input.value).replace(',', '.'));
+            if (!val || val <= 0) {
+                showToast('Bitte gültigen TR-Kurs eingeben');
+                return;
+            }
+            const stock = state.stocks.find(s => s.id === id);
+            if (stock) {
+                stock.trPrice = Number(val.toFixed(2));
+                state.settings.priceSourceMode = 'tr';
+                state.editingTrPriceId = null;
+                saveToStorage();
+                saveSettingsToStorage();
+                syncSettingsUI();
+                renderAll();
+                showToast(`TR-Kurs für ${stock.ticker} auf ${formatEUR(stock.trPrice)} gesetzt`);
+            }
+        }
+
+        function syncSettingsUI() {
+            const isDark = state.settings.theme === 'dark';
+            const themeLabel = document.getElementById('theme-label');
+            const themeIcon = document.getElementById('theme-icon');
+            if (themeLabel) themeLabel.textContent = isDark ? 'Dunkelmodus aktiv' : 'Hellmodus aktiv';
+            if (themeIcon) themeIcon.setAttribute('data-lucide', isDark ? 'moon' : 'sun');
+
+            const allowanceBadge = document.getElementById('allowance-badge');
+            if (allowanceBadge) allowanceBadge.textContent = `${state.settings.taxAllowance.toLocaleString('de-DE')} €`;
+
+            document.querySelectorAll('.allowance-btn').forEach(btn => {
+                const active = parseInt(btn.dataset.allowance, 10) === state.settings.taxAllowance;
+                btn.className = active
+                    ? 'allowance-btn py-2 rounded-xl text-xs font-bold bg-emerald-500 text-zinc-950'
+                    : 'allowance-btn py-2 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300';
+            });
+
+            const isTrMode = state.settings.priceSourceMode === 'tr';
+            const ovModeBtn = document.getElementById('btn-price-mode-toggle');
+            if (ovModeBtn) {
+                ovModeBtn.textContent = isTrMode ? 'TR-Kurse' : 'API-Kurse';
+                ovModeBtn.className = isTrMode
+                    ? 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-600 dark:text-sky-400 font-bold px-2 py-0.5 rounded-md border border-sky-500/30 transition'
+                    : 'bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 transition';
+            }
+            const pfModeBtn = document.getElementById('btn-portfolio-price-mode');
+            if (pfModeBtn) {
+                pfModeBtn.textContent = isTrMode ? 'Auf API-Kurse' : 'Auf TR-Kurse';
+                pfModeBtn.className = isTrMode
+                    ? 'bg-sky-500/15 hover:bg-sky-500/25 active:scale-95 transition text-sky-600 dark:text-sky-400 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-sky-500/30'
+                    : 'bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 transition text-zinc-800 dark:text-zinc-200 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700';
+            }
+
+            const tdInput = document.getElementById('setting-twelvedata-key');
+            const fhInput = document.getElementById('setting-finnhub-key');
+            if (tdInput && !tdInput.value) tdInput.value = state.settings.twelveDataKey || '';
+            if (fhInput && !fhInput.value) fhInput.value = state.settings.finnhubKey || '';
+
+            const hasTd = Boolean(state.settings.twelveDataKey);
+            const hasFh = Boolean(state.settings.finnhubKey);
+            const statusBadge = document.getElementById('api-status-badge');
+            const modalApiTag = document.getElementById('modal-api-tag');
+            let statusText = 'TR Auto-Feed';
+            if (hasTd && hasFh) statusText = 'Dual-API aktiv';
+            else if (hasTd) statusText = 'Twelve Data aktiv';
+            else if (hasFh) statusText = 'Finnhub aktiv';
+
+            if (statusBadge) statusBadge.textContent = statusText;
+            if (modalApiTag) modalApiTag.textContent = statusText;
+        }
+
+        async function validateTwelveDataKey(key) {
+            if (!key) return { valid: null, msg: '' };
+            try {
+                const res = await fetch(`https://api.twelvedata.com/price?symbol=AAPL&apikey=${encodeURIComponent(key)}`);
+                const data = await res.json();
+                if (data && data.price) return { valid: true, msg: '✓ Gültig' };
+                if (data && data.code === 429) return { valid: true, msg: '⚠ Tageslimit erreicht' };
+                return { valid: false, msg: '✕ Ungültiger Key' };
+            } catch (e) {
+                return { valid: false, msg: '✕ Verbindungsfehler' };
+            }
+        }
+
+        async function validateFinnhubKey(key) {
+            if (!key) return { valid: null, msg: '' };
+            try {
+                const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(key)}`);
+                if (res.status === 401 || res.status === 403) return { valid: false, msg: '✕ Ungültiger Key' };
+                const data = await res.json();
+                if (data && data.error) return { valid: false, msg: '✕ Ungültiger Key' };
+                if (data && typeof data.c === 'number') return { valid: true, msg: '✓ Gültig' };
+                return { valid: false, msg: '✕ Prüfung fehlgeschlagen' };
+            } catch (e) {
+                return { valid: false, msg: '✕ Verbindungsfehler' };
+            }
+        }
+
+        async function saveApiKeys() {
+            const tdKey = (document.getElementById('setting-twelvedata-key').value || '').trim();
+            const fhKey = (document.getElementById('setting-finnhub-key').value || '').trim();
+            const saveBtn = document.getElementById('save-keys-btn');
+            const tdStatusEl = document.getElementById('td-key-status');
+            const fhStatusEl = document.getElementById('fh-key-status');
+
+            state.settings.twelveDataKey = tdKey;
+            state.settings.finnhubKey = fhKey;
+            saveSettingsToStorage();
+            syncSettingsUI();
+
+            if (saveBtn) saveBtn.textContent = 'Prüfe Keys...';
+            if (tdStatusEl) {
+                tdStatusEl.textContent = tdKey ? 'Prüfe...' : '';
+                tdStatusEl.className = 'text-[10px] font-bold text-zinc-400';
+            }
+            if (fhStatusEl) {
+                fhStatusEl.textContent = fhKey ? 'Prüfe...' : '';
+                fhStatusEl.className = 'text-[10px] font-bold text-zinc-400';
+            }
+
+            const [tdRes, fhRes] = await Promise.all([
+                validateTwelveDataKey(tdKey),
+                validateFinnhubKey(fhKey)
+            ]);
+
+            if (tdStatusEl && tdKey) {
+                tdStatusEl.textContent = tdRes.msg;
+                tdStatusEl.className = `text-[10px] font-bold ${tdRes.valid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`;
+            }
+            if (fhStatusEl && fhKey) {
+                fhStatusEl.textContent = fhRes.msg;
+                fhStatusEl.className = `text-[10px] font-bold ${fhRes.valid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`;
+            }
+
+            if (saveBtn) saveBtn.textContent = 'Speichern & Prüfen';
+
+            const hasInvalid = (tdKey && tdRes.valid === false) || (fhKey && fhRes.valid === false);
+            if (hasInvalid) {
+                const statusBadge = document.getElementById('api-status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Key-Fehler!';
+                    statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500 shrink-0';
+                }
+                showToast('Mindestens ein API-Key ist ungültig!');
+            } else {
+                const statusBadge = document.getElementById('api-status-badge');
+                if (statusBadge) {
+                    statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0';
+                }
+                if (tdKey || fhKey) {
+                    showToast('API-Keys erfolgreich verifiziert!');
+                    refreshAllLivePrices(true);
+                } else {
+                    showToast('Keys geleert (TR Auto-Feed aktiv)');
+                }
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2400);
+        }
+    </script>
+</body>
+</html>
